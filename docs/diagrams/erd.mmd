@@ -1,0 +1,21 @@
+erDiagram
+  User ||--|| Peer : owns
+  User ||--o{ LearningSession : starts
+  CurriculumRevision ||--o{ CurriculumItem : defines
+  CurriculumItem ||--o{ Lesson : maps
+  Lesson ||--o{ LessonConcept : contains
+  Lesson ||--o{ SessionLesson : selected
+  LearningSession ||--o{ SessionLesson : includes
+  Concept ||--o{ LessonConcept : referenced
+  Concept ||--o{ ConceptPrerequisite : requires
+  Peer ||--o{ PeerKnowledge : tracks
+  Concept ||--o{ PeerKnowledge : is_known
+  Peer ||--o{ MasteryEvidence : earns
+  LearningSession ||--o{ LearningTurn : processes
+  LearningSession ||--o{ Exercise : contains
+  Exercise ||--o{ ExerciseAttempt : attempts
+  ExerciseAttempt ||--o{ MasteryEvidence : proves
+  Rubric ||--o{ Criterion : lists
+  Rubric ||--o{ Evaluation : used
+  LearningSession ||--o{ Evaluation : gets
+  Evaluation ||--o{ CriterionResult : comprises

@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.1-draft",
+  "source_status": "APP_CURATED_SAMPLE",
+  "curriculum": {
+    "school_level": "middle",
+    "grade": 1,
+    "subject": "数学",
+    "official_area": "A 数と式",
+    "curriculum_revision": "JHS-2017",
+    "official_code": null,
+    "reference_url": "https://www.mext.go.jp/a_menu/shotou/new-cs/1384661.htm"
+  },
+  "lesson": {
+    "code": "math-jhs1-equation-properties",
+    "title": "等式の性質",
+    "parent_title": "一元一次方程式",
+    "is_published": false,
+    "concepts": [
+      {
+        "code": "equality-addition",
+        "title": "等式の両辺への同じ数の加算",
+        "description": "等式の両辺に同じ数をたしても、等式は成り立つという性質。",
+        "difficulty": "basic",
+        "mastery_policy": {
+          "required_correct": 1,
+          "required_problem_variants": 1,
+          "require_verified_steps": true
+        }
+      },
+      {
+        "code": "equality-division-nonzero",
+        "title": "等式の両辺を0以外の同じ数で割る",
+        "description": "等式の両辺を0以外の同じ数で割っても、等式は成り立つという性質。0で割ることはできない。",
+        "difficulty": "standard",
+        "mastery_policy": {
+          "required_correct": 2,
+          "required_problem_variants": 2,
+          "require_verified_steps": true
+        }
+      }
+    ]
+  },
+  "rubric": {
+    "version": "draft-2",
+    "official_observation_perspectives": [
+      "知識・技能",
+      "思考・判断・表現",
+      "主体的に学習に取り組む態度"
+    ],
+    "app_axes": [
+      {
+        "code": "accuracy",
+        "label": "正確さ",
+        "weight": 40,
+        "perspective": "知識・技能",
+        "description": "説明と、ぴあ友の質問への答えに誤りがないか"
+      },
+      {
+        "code": "logic",
+        "label": "論理性",
+        "weight": 30,
+        "perspective": "思考・判断・表現",
+        "description": "手順や理由の筋道が通っているか。質問に根拠を示して答えられたか"
+      },
+      {
+        "code": "clarity",
+        "label": "分かりやすさ",
+        "weight": 30,
+        "perspective": "思考・判断・表現",
+        "description": "ぴあ友がつまずいたところを、言い換えや例で補えたか"
+      }
+    ],
+    "weights_status": "PROVISIONAL",
+    "out_of_scope": [
+      "主体的に学習に取り組む態度（長期的な根拠が必要なため、MVPの説明力スコアでは扱わない）"
+    ]
+  },
+  "note": "この教材は設計サンプルであり、国研・学習指導要領の公式評価規準の転載・確認済み教材ではない。配点（40・30・30）は仮の値で、採点の比較実験（#67）の結果で見直す。"
+}

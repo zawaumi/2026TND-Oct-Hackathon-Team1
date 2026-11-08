@@ -1,0 +1,10 @@
+flowchart LR
+  USER[ユーザー（中高生）] --> WEB[Next.js Static / Firebase Hosting]
+  WEB <-->|端末内会話| LOCAL[(Memory / IndexedDB opt-in)]
+  WEB --> AUTH[Firebase Auth]
+  WEB -->|HTTPS /api/v1| DRF[DRF / Cloud Run]
+  DRF -->|verify ID token| AUTH
+  DRF --> DB[(PostgreSQL)]
+  DRF --> JEV[Jev 評価候補]
+  DRF --> DEEP[DeepSeek 対話表現]
+  DRF --> ENGINE[Skill Executor / SymPy]
