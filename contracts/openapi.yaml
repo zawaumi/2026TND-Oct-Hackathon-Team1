@@ -744,5 +744,5 @@ components:
         next_lesson_ids:
           type: array
           maxItems: 3
-          description: 次の学習の候補の小単元ID
+          description: 次の学習の候補の小単元ID。公開中の小単元だけ（docs/04 7.1）
           items: {type: integer}
