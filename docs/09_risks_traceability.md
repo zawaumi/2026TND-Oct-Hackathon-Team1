@@ -32,7 +32,8 @@
 | SEC-01 | sessions/filters, validators | SEC-T03〜05 |
 | PR-01 | session-store/client, schema | PR-T01 |
 | PR-02 | accounts/deletion | PR-T02、運用削除確認 |
-| NFR-01 | E2E demo | 最終の一連の授業デモ |
+| NFR-01 | E2Eデモ | 最終の一連の授業デモ |
+| NFR-02 | web（各画面のPC・スマホの配置） | UI-T03 |
 
 ## 3. 完成判定の定義
 - **設計完了**：仕様にID、入力/出力、制約、受入条件、担当、未決事項がある。
