@@ -5,7 +5,7 @@ info:
     「ぴあとも」DRF API設計契約 v1.1。これは契約草案であり実装済みAPIではない。
     /health/以外はFirebase IDトークン認証（Googleアカウントでのログインのみ）を要求。会話本文を原則DBへ永続保存しない。
     v1.1の変更（docs/08 ADR-015・ADR-023）：GET /sessions/ を追加、ExerciseAttempt.steps を式＋技能の配列に変更し reason・blocked_skill を追加、
-    EvaluationCriterion.code を accuracy・logic・clarity の3観点に固定、EvaluationReport に knowledge_changes・next_lesson_ids を追加、ConceptNode に description を追加。
+    EvaluationCriterion.code を accuracy・logic・clarity の3観点に固定、EvaluationReport に knowledge_changes・next_lesson_ids・strengths を追加、ConceptNode に description を追加、GET /lessons/ に grade を追加（ADR-031・033）。
   version: 1.1.0-draft
 servers:
   - url: /api/v1
@@ -200,6 +200,10 @@ paths:
         - name: school_level
           in: query
           schema: {$ref: '#/components/schemas/SchoolLevel'}
+        - name: grade
+          in: query
+          description: 学年（中学の1〜3）。高校は科目（subject）で絞る（ADR-031）
+          schema: {type: integer, minimum: 1, maximum: 3}
         - name: subject
           in: query
           schema: {type: string, maxLength: 50}
@@ -562,6 +566,7 @@ components:
         parent_id: {type: integer, nullable: true}
         curriculum_item_code: {type: string, nullable: true}
         title: {type: string}
+        grade: {type: integer, minimum: 1, maximum: 3, nullable: true, description: 中学の学年。高校の科目はnull}
         mode: {type: string, enum: [preset, free, inquiry]}
         published: {type: boolean}
         concept_ids:
@@ -746,3 +751,8 @@ components:
           maxItems: 3
           description: 次の学習の候補の小単元ID。公開中の小単元だけ（docs/04 7.1）
           items: {type: integer}
+        strengths:
+          type: array
+          maxItems: 3
+          description: 良かったところ（ADR-033）。ターンごとの所見から作る。会話の引用や個人情報は入れない
+          items: {type: string, maxLength: 100}
