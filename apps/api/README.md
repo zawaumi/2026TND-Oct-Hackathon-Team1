@@ -18,4 +18,32 @@ python manage.py runserver
 - `DJANGO_SECRET_KEY`: Djangoの秘密鍵
 - `DJANGO_ALLOWED_HOSTS`: 許可するホスト名のカンマ区切り（例: `api.example.com,localhost`）
 
-開発用の秘密鍵は環境変数未指定時に起動ごとに生成されます。データベースは暫定のSQLiteで、PostgreSQLの設定は別途対応します。
+開発用の秘密鍵は環境変数未指定時に起動ごとに生成されます。
+
+## ユーザーとマイグレーション
+
+`accounts.User` は Firebase UID を一意の識別子として使います。通常ユーザーは初回設定と必要な同意の完了後に作成します。管理者は `python manage.py createsuperuser` で UID とパスワードを指定して作成できます。ユーザーモデルは初回マイグレーション前に設定する必要があるため、既存の開発用 DB に既定のユーザーモデルを移行済みの場合はデータ移行が必要です。
+
+`python manage.py test accounts` でユーザー作成と UID の一意制約を確認できます。
+
+## ローカル PostgreSQL
+
+リポジトリ直下で `.env.example` を `.env` にコピーし、開発専用のパスワードを設定します。
+
+```sh
+cp .env.example .env
+docker compose up -d db
+docker compose ps  # db が healthy になるまで待つ
+set -a
+source .env
+set +a
+cd apps/api
+source .venv/bin/activate
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py test accounts config
+```
+
+`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_HOST`、`POSTGRES_PORT` を API プロセスに渡します。ホストからは `POSTGRES_HOST=127.0.0.1`、Compose 内の別サービスからは `db` を使います。ホスト側ポートが使用中なら `.env` の `POSTGRES_PORT` を変更してください。既存ボリュームの DB 名・ユーザー・パスワードは `.env` の変更だけでは更新されません。
+
+開発時にこれらの環境変数がすべて未設定なら SQLite を使用し、一部だけ設定された場合はエラーになります。本番では PostgreSQL の全設定が必須です。`docker compose down` はデータを保持します。`docker compose down -v` はボリューム内の DB データをすべて削除します。

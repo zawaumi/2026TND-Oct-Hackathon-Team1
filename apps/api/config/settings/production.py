@@ -3,6 +3,7 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F403
+from .database import postgres_database
 
 
 def required_env(name):
@@ -17,3 +18,5 @@ SECRET_KEY = required_env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS = [host.strip() for host in required_env("DJANGO_ALLOWED_HOSTS").split(",") if host.strip()]
 if not ALLOWED_HOSTS or "*" in ALLOWED_HOSTS:
     raise ImproperlyConfigured("DJANGO_ALLOWED_HOSTS must contain explicit hosts")
+
+DATABASES = {"default": postgres_database()}
