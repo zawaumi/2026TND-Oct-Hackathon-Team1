@@ -9,6 +9,16 @@ export type ConceptEdge = Schemas["ConceptEdge"];
 export type MessageResponse = Schemas["MessageResponse"];
 export type PeerResponse = Schemas["PeerResponse"];
 export type KnowledgeChange = Schemas["KnowledgeChange"];
+export type Profile = Schemas["Profile"];
+export type SchoolLevel = Schemas["SchoolLevel"];
+export type SessionSummary = Schemas["SessionSummary"];
+
+/** GET /lessons/ の絞り込み（ADR-031） */
+export type LessonQuery = {
+  school_level?: SchoolLevel;
+  grade?: number;
+  subject?: string;
+};
 
 /** APIのエラー。status が 0 のときは通信できなかった（ネットワークの失敗） */
 export class ApiError extends Error {
@@ -29,6 +39,10 @@ export type TurnResult =
 
 /** 画面が使うAPI。本物（fetch）とモックで同じ形にする */
 export interface ApiClient {
+  getMe(): Promise<Profile>;
+  getLessons(query: LessonQuery): Promise<Lesson[]>;
+  listSessions(limit: number): Promise<SessionSummary[]>;
+  createSession(lessonIds: number[]): Promise<LearningSession>;
   getSession(sessionId: number): Promise<LearningSession>;
   getLesson(lessonId: number): Promise<Lesson>;
   getPeerKnowledge(): Promise<{ knowledge_version: number; items: PeerKnowledge[] }>;

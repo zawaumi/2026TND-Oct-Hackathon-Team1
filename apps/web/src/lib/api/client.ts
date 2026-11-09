@@ -1,4 +1,12 @@
-import { ApiError, type ApiClient, type MessageResponse, type Schemas, type TurnResult } from "./types";
+import {
+  ApiError,
+  type ApiClient,
+  type Lesson,
+  type MessageResponse,
+  type Schemas,
+  type SessionSummary,
+  type TurnResult,
+} from "./types";
 import { mockClient } from "./mock";
 
 export * from "./types";
@@ -55,7 +63,19 @@ async function turn(path: string, init?: RequestInit): Promise<TurnResult> {
   return { kind: "done", data: (await res.json()) as MessageResponse };
 }
 
+function query(params: Record<string, string | number | undefined>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") q.set(k, String(v));
+  const str = q.toString();
+  return str ? `?${str}` : "";
+}
+
 const httpClient: ApiClient = {
+  getMe: () => json(`/users/me/`),
+  getLessons: async (q) => (await json<{ results: Lesson[] }>(`/lessons/${query(q)}`)).results,
+  listSessions: async (limit) => (await json<{ results: SessionSummary[] }>(`/sessions/${query({ limit })}`)).results,
+  createSession: (lessonIds) =>
+    json(`/sessions/`, { method: "POST", body: JSON.stringify({ mode: "preset", lesson_ids: lessonIds }) }),
   getSession: (id) => json(`/sessions/${id}/`),
   getLesson: (id) => json(`/lessons/${id}/`),
   getPeerKnowledge: () => json(`/peers/me/knowledge/`),

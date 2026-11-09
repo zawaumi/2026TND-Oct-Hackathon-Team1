@@ -13,17 +13,22 @@ import {
   type ApiClient,
   type ConceptNode,
   type KnowledgeChange,
+  type LearningSession,
   type Lesson,
   type MessageResponse,
   type PeerKnowledge,
   type PeerResponse,
+  type Profile,
+  type SessionSummary,
   type TurnResult,
 } from "./types";
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// 領域 → 単元 → 小単元。公開している小単元は3つだけ（ADR-028）
 const LESSONS: Lesson[] = [
-  { id: 10, parent_id: null, title: "一次方程式", grade: 1, mode: "preset", published: true, concept_ids: [] },
+  { id: 20, parent_id: null, title: "数と式", grade: 1, mode: "preset", published: true, concept_ids: [] },
+  { id: 10, parent_id: 20, title: "一次方程式", grade: 1, mode: "preset", published: true, concept_ids: [] },
   { id: 1, parent_id: 10, title: "等式の性質", grade: 1, mode: "preset", published: true, concept_ids: [101] },
   { id: 2, parent_id: 10, title: "方程式の解法", grade: 1, mode: "preset", published: true, concept_ids: [101, 102] },
   { id: 3, parent_id: 10, title: "移項", grade: 1, mode: "preset", published: true, concept_ids: [103] },
@@ -68,6 +73,14 @@ const SCRIPT: Script[] = [
   },
 ];
 
+const PROFILE: Profile = { id: 1, nickname: "テストユーザー", school_level: "middle", grade: 1, onboarding_completed: true };
+
+const sessions = new Map<number, LearningSession>();
+const history: SessionSummary[] = [
+  { id: 1, status: "finished", mode: "preset", lesson_ids: [1], started_at: "2026-11-08T10:00:00+09:00", finished_at: "2026-11-08T10:20:00+09:00", total_score: 72 },
+];
+let nextSessionId = 2;
+
 let scriptIndex = 0;
 const answered = new Map<string, MessageResponse>();
 const pending = new Map<string, number>(); // request_id → 残りの「処理中」回数
@@ -108,10 +121,34 @@ function makeResponse(requestId: string, content: string): MessageResponse {
 }
 
 export const mockClient: ApiClient = {
+  async getMe() {
+    await wait(150);
+    return { ...PROFILE };
+  },
+  async getLessons(q) {
+    await wait(250);
+    // 中学1年の数学だけ公開中。それ以外は空
+    if ((q.school_level ?? "middle") !== "middle") return [];
+    if (q.grade != null && q.grade !== 1) return [];
+    if (q.subject && q.subject !== "math") return [];
+    return LESSONS.map((l) => ({ ...l }));
+  },
+  async listSessions(limit) {
+    await wait(150);
+    return history.slice(0, limit);
+  },
+  async createSession(lessonIds) {
+    await wait(500);
+    if (lessonIds.length === 0 || lessonIds.length > 10) throw new ApiError(400, "INVALID_LESSONS", "小単元の数が正しくありません");
+    const s: LearningSession = { id: nextSessionId++, status: "active", mode: "preset", lesson_ids: lessonIds, knowledge_version: knowledgeVersion };
+    sessions.set(s.id, s);
+    history.unshift({ id: s.id, status: "active", mode: "preset", lesson_ids: lessonIds, started_at: new Date().toISOString() });
+    return s;
+  },
   async getSession(sessionId) {
     await wait(200);
     if (!(sessionId > 0)) throw new ApiError(404, "NOT_FOUND", "授業が見つかりません");
-    return { id: sessionId, status: "active", mode: "preset", lesson_ids: [2, 3], knowledge_version: knowledgeVersion };
+    return sessions.get(sessionId) ?? { id: sessionId, status: "active", mode: "preset", lesson_ids: [2, 3], knowledge_version: knowledgeVersion };
   },
   async getLesson(lessonId) {
     await wait(100);
