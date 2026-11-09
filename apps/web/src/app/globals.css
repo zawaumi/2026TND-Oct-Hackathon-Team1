@@ -1,26 +1,43 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * 見た目の基本（docs/04_ux_ui.md の 1.3）。
+ * 画面ごとに色を決め打ちせず、ここで決めた名前（bg-page、text-ink など）を使う。
+ */
+@theme {
+  --color-page: #e9ecfc; /* 背景（淡い青紫） */
+  --color-card: #ffffff; /* カード */
+  --color-primary: #4677e6; /* メインの色：ボタン・選択中・バー */
+  --color-link: #2f55d4; /* 文字やリンクの青 */
+  --color-accent: #2330e6; /* 吹き出しの大きな文字 */
+  --color-ink: #1c1c2e; /* 本文 */
+  --color-sub: #4e5170; /* 補足 */
+  --color-outline: #b9c3f0; /* 控えめなボタンの枠 */
+  --color-line: #dce0f5; /* 区切り線 */
+  --color-soft: #f1f4fe; /* ぴあ友の吹き出し・薄い背景 */
+  --color-track: #e3e8fa; /* バーの下地 */
+  --color-danger: #b42318;
+  --color-warn-bg: #fde9dd; /* 質問の種類の札 */
+  --color-warn-ink: #8a3a12;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --radius-card: 22px;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-sans: var(--font-noto-sans-jp), system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* アニメーションを減らす設定のときは、動きを止める（docs/04 の 5.5） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
