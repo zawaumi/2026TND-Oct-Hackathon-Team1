@@ -7,6 +7,7 @@ import type { PeerEmotion } from "@/components/PeerAvatar";
 import { STATUS_LABEL } from "@/components/KnowledgeState";
 import { Logo } from "@/components/Logo";
 import { api, ApiError, type Lesson, type MessageResponse, type PeerKnowledge } from "@/lib/api/client";
+import { saveConversation, type ConversationLine } from "@/lib/conversationMemory";
 import { understandingPercent } from "@/lib/understanding";
 import { ChatLog, type ChatItem } from "./ChatLog";
 import { FinishDialog } from "./FinishDialog";
@@ -131,6 +132,21 @@ export function StudyRoom() {
       cancelled = true;
     };
   }, [sessionId]);
+
+  /* ───── 会話をこのタブのメモリに残す（学習レポートの「つまずいたところ」で使う） ───── */
+  useEffect(() => {
+    if (!loaded) return;
+    saveConversation(
+      loaded.sessionId,
+      items.flatMap((it): ConversationLine[] =>
+        it.kind === "peer"
+          ? [{ key: it.key, role: "peer", text: it.text, action: it.action }]
+          : it.kind === "user" && it.state === "sent"
+            ? [{ key: it.key, role: "user", text: it.text }]
+            : [],
+      ),
+    );
+  }, [items, loaded]);
 
   /* ───── 会話のスクロール：いちばん下を見ているときだけ追いかける ───── */
   const onScroll = useCallback(() => {

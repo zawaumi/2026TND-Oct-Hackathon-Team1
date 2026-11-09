@@ -14,6 +14,7 @@ import {
   type ConceptNode,
   type KnowledgeChange,
   type LearningSession,
+  type EvaluationReport,
   type Lesson,
   type MessageResponse,
   type PeerKnowledge,
@@ -120,7 +121,93 @@ function makeResponse(requestId: string, content: string): MessageResponse {
   };
 }
 
+/** 授業ごとの知識の変化（レポート用） */
+const sessionChanges = new Map<number, KnowledgeChange[]>();
+const evaluationPolls = new Map<number, number>();
+function record(sessionId: number, res: MessageResponse): MessageResponse {
+  const list = sessionChanges.get(sessionId) ?? [];
+  list.push(...res.knowledge_changes);
+  sessionChanges.set(sessionId, list);
+  return res;
+}
+/** 同じ概念の変化をまとめ、最初の「前」と最後の「後」にする */
+function mergeChanges(list: KnowledgeChange[]): KnowledgeChange[] {
+  const byId = new Map<number, KnowledgeChange>();
+  for (const c of list) {
+    const prev = byId.get(c.concept_id);
+    byId.set(c.concept_id, prev ? { ...prev, new_status: c.new_status } : { ...c });
+  }
+  return [...byId.values()].filter((c) => c.old_status !== c.new_status);
+}
+
+/**
+ * 評価のモック。授業のIDで結果を変えられる（README）。
+ * 98：評価できなかった（UNAVAILABLE） 99：3観点すべて評価保留 それ以外：分かりやすさだけ評価保留
+ */
+function makeEvaluation(sessionId: number): EvaluationReport {
+  const recorded = sessionChanges.get(sessionId);
+  const changes = recorded
+    ? mergeChanges(recorded)
+    : [{ concept_id: 102, old_status: "INTRODUCED" as const, new_status: "PRACTICING" as const }];
+  const base = {
+    score_label: "ぴあとも独自の説明力スコア",
+    rubric_version: "draft-2",
+    mastered_concept_ids: [...knowledge.values()].filter((k) => k.status === "MASTERED").map((k) => k.concept_id),
+    knowledge_changes: changes,
+    next_lesson_ids: [3, 2],
+  };
+  if (sessionId === 98) {
+    return { ...base, status: "UNAVAILABLE", total_score: null, criterion_results: [], strengths: [] };
+  }
+  if (sessionId === 99) {
+    return {
+      ...base,
+      status: "PARTIAL",
+      total_score: null,
+      strengths: [],
+      criterion_results: (["accuracy", "logic", "clarity"] as const).map((code, i) => ({
+        code,
+        label: ["正確さ", "論理性", "分かりやすさ"][i],
+        weight: [40, 30, 30][i],
+        status: "UNRATED" as const,
+        score: null,
+        explanation: "材料が足りないため評価していません",
+      })),
+    };
+  }
+  return {
+    ...base,
+    status: "PARTIAL",
+    total_score: 74,
+    strengths: [
+      "具体的な式（x + 3 = 7）を使って説明できた",
+      "移項と等式の性質を結びつけて説明できた",
+      "ぴあ友の質問に、順を追って答えられた",
+    ],
+    criterion_results: [
+      { code: "accuracy", label: "正確さ", weight: 40, status: "SCORED", score: 80, explanation: "移項の説明と、質問への答えは正確でした" },
+      {
+        code: "logic",
+        label: "論理性",
+        weight: 30,
+        status: "SCORED",
+        score: 66,
+        explanation: "割り算も等式の性質（両辺を同じ数でわっても等しい）で説明できます",
+      },
+      { code: "clarity", label: "分かりやすさ", weight: 30, status: "UNRATED", score: null, explanation: "材料が足りないため評価していません" },
+    ],
+  };
+}
+
 export const mockClient: ApiClient = {
+  async getEvaluation(sessionId) {
+    await wait(300);
+    // 1回目は「評価中」を返す
+    const n = evaluationPolls.get(sessionId) ?? 0;
+    evaluationPolls.set(sessionId, n + 1);
+    if (n === 0) return { kind: "pending", retryAfterMs: 1500 };
+    return { kind: "done", data: makeEvaluation(sessionId) };
+  },
   async getMe() {
     await wait(150);
     return { ...PROFILE };
@@ -140,7 +227,14 @@ export const mockClient: ApiClient = {
   async createSession(lessonIds) {
     await wait(500);
     if (lessonIds.length === 0 || lessonIds.length > 10) throw new ApiError(400, "INVALID_LESSONS", "小単元の数が正しくありません");
-    const s: LearningSession = { id: nextSessionId++, status: "active", mode: "preset", lesson_ids: lessonIds, knowledge_version: knowledgeVersion };
+    const s: LearningSession = {
+      id: nextSessionId++,
+      status: "active",
+      mode: "preset",
+      lesson_ids: lessonIds,
+      knowledge_version: knowledgeVersion,
+      started_at: new Date().toISOString(),
+    };
     sessions.set(s.id, s);
     history.unshift({ id: s.id, status: "active", mode: "preset", lesson_ids: lessonIds, started_at: new Date().toISOString() });
     return s;
@@ -148,7 +242,16 @@ export const mockClient: ApiClient = {
   async getSession(sessionId) {
     await wait(200);
     if (!(sessionId > 0)) throw new ApiError(404, "NOT_FOUND", "授業が見つかりません");
-    return sessions.get(sessionId) ?? { id: sessionId, status: "active", mode: "preset", lesson_ids: [2, 3], knowledge_version: knowledgeVersion };
+    return (
+      sessions.get(sessionId) ?? {
+        id: sessionId,
+        status: "active",
+        mode: "preset",
+        lesson_ids: [2, 3],
+        knowledge_version: knowledgeVersion,
+        started_at: "2026-10-31T16:00:00+09:00",
+      }
+    );
   },
   async getLesson(lessonId) {
     await wait(100);
@@ -170,7 +273,7 @@ export const mockClient: ApiClient = {
       ],
     };
   },
-  async postMessage(_sessionId, body): Promise<TurnResult> {
+  async postMessage(sessionId, body): Promise<TurnResult> {
     await wait(900);
     const { request_id: id, content } = body;
     if (content.includes("#409")) throw new ApiError(409, "STALE_KNOWLEDGE_VERSION", "状態が更新されました。最新情報を取得してください。");
@@ -182,10 +285,10 @@ export const mockClient: ApiClient = {
     if (done) return { kind: "done", data: done };
     if (content.includes("#202") && !pending.has(id)) {
       pending.set(id, 1);
-      answered.set(id, makeResponse(id, content));
+      answered.set(id, record(sessionId, makeResponse(id, content)));
       return { kind: "pending", retryAfterMs: 1200 };
     }
-    const res = makeResponse(id, content);
+    const res = record(sessionId, makeResponse(id, content));
     answered.set(id, res);
     return { kind: "done", data: res };
   },

@@ -1,6 +1,7 @@
 import {
   ApiError,
   type ApiClient,
+  type EvaluationReport,
   type Lesson,
   type MessageResponse,
   type Schemas,
@@ -83,6 +84,11 @@ const httpClient: ApiClient = {
     json(`/knowledge-graph/${lessonId != null ? `?lesson_id=${lessonId}` : ""}`),
   postMessage: (id, body) => turn(`/sessions/${id}/messages/`, { method: "POST", body: JSON.stringify(body) }),
   getTurn: (id, requestId) => turn(`/sessions/${id}/turns/${requestId}/`),
+  getEvaluation: async (id) => {
+    const res = await request(`/sessions/${id}/evaluation/`);
+    if (res.status === 202) return { kind: "pending", retryAfterMs: retryAfterMs(res) };
+    return { kind: "done", data: (await res.json()) as EvaluationReport };
+  },
   finishSession: (id) => json(`/sessions/${id}/finish/`, { method: "POST" }),
 };
 

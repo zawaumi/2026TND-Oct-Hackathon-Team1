@@ -19,7 +19,17 @@ const ITEMS: { key: NavKey; href: string; pc: string; sp: string; icon: (p: { cl
  * ナビを出す画面の外枠。PCは上のナビバー、スマホは下のタブバー（ADR-025）。
  * ホーム・学習ルーム・ログインでは使わない。
  */
-export function AppShell({ active, children }: { active: NavKey; children: ReactNode }) {
+export function AppShell({
+  active,
+  children,
+  mobileNav = true,
+}: {
+  /** ナビで強調する項目。どれにも当たらない画面は null */
+  active: NavKey | null;
+  children: ReactNode;
+  /** スマホのタブバーを出すか（学習レポートでは出さない。docs/04 の 1.2） */
+  mobileNav?: boolean;
+}) {
   const { profile } = useProfile();
   return (
     <div className="flex min-h-dvh flex-col">
@@ -50,33 +60,37 @@ export function AppShell({ active, children }: { active: NavKey; children: React
         </Link>
       </header>
 
-      <div className="flex flex-1 flex-col pb-[calc(64px+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>
+      <div className={`flex flex-1 flex-col lg:pb-0 ${mobileNav ? "pb-[calc(64px+env(safe-area-inset-bottom))]" : ""}`}>
+        {children}
+      </div>
 
-      <nav
-        aria-label="メイン"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
-      >
-        <ul className="grid h-16 grid-cols-4">
-          {ITEMS.map((it) => {
-            const Icon = it.icon;
-            const on = it.key === active;
-            return (
-              <li key={it.key}>
-                <Link
-                  href={it.href}
-                  aria-current={on ? "page" : undefined}
-                  className={`flex h-full flex-col items-center justify-center gap-1 text-[11px] ${
-                    on ? "font-bold text-link" : "text-sub"
-                  }`}
-                >
-                  <Icon className="size-6" />
-                  {it.sp}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {mobileNav && (
+        <nav
+          aria-label="メイン"
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
+        >
+          <ul className="grid h-16 grid-cols-4">
+            {ITEMS.map((it) => {
+              const Icon = it.icon;
+              const on = it.key === active;
+              return (
+                <li key={it.key}>
+                  <Link
+                    href={it.href}
+                    aria-current={on ? "page" : undefined}
+                    className={`flex h-full flex-col items-center justify-center gap-1 text-[11px] ${
+                      on ? "font-bold text-link" : "text-sub"
+                    }`}
+                  >
+                    <Icon className="size-6" />
+                    {it.sp}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      )}
     </div>
   );
 }
