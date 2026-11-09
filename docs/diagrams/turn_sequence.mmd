@@ -1,0 +1,23 @@
+sequenceDiagram
+  autonumber
+  actor User as User
+  participant UI as Next.js
+  participant API as DRF
+  participant DB as PostgreSQL
+  participant Jev as Jev
+  participant LLM as DeepSeek
+  User->>UI: 説明を送信
+  UI->>API: POST /sessions/{id}/messages/ + Firebase ID token
+  API->>DB: 短期トランザクション 受付・状態version取得
+  DB-->>API: PeerKnowledge + version
+  API->>API: 不正入力の用途分類
+  API->>Jev: 説明内容の構造化判定
+  Jev-->>API: 判定候補
+  API->>API: 利用可能技能・会話方針を決定
+  API->>LLM: 制約付きJSON生成
+  LLM-->>API: 応答候補
+  API->>API: 出力検証 or 定型fallback
+  API->>DB: 行ロック・version確認・最小限の状態確定
+  DB-->>API: 完了
+  API-->>UI: 検証済み応答＋知識変化
+  UI-->>User: 会話・アバター・ノード表示

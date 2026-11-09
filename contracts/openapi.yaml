@@ -1,0 +1,758 @@
+openapi: 3.0.3
+info:
+  title: Piatomo API
+  description: |
+    「ぴあとも」DRF API設計契約 v1.1。これは契約草案であり実装済みAPIではない。
+    /health/以外はFirebase IDトークン認証（Googleアカウントでのログインのみ）を要求。会話本文を原則DBへ永続保存しない。
+    v1.1の変更（docs/08 ADR-015・ADR-023）：GET /sessions/ を追加、ExerciseAttempt.steps を式＋技能の配列に変更し reason・blocked_skill を追加、
+    EvaluationCriterion.code を accuracy・logic・clarity の3観点に固定、EvaluationReport に knowledge_changes・next_lesson_ids・strengths を追加、ConceptNode に description を追加、GET /lessons/ に grade を追加（ADR-031・033）。
+  version: 1.1.0-draft
+servers:
+  - url: /api/v1
+security:
+  - firebaseBearer: []
+tags:
+  - name: System
+  - name: Accounts
+  - name: Lessons
+  - name: Peers
+  - name: Sessions
+  - name: Exercises
+  - name: Evaluations
+paths:
+  /health/:
+    get:
+      tags: [System]
+      summary: ヘルスチェック（公開）
+      security: []
+      responses:
+        '200':
+          description: API process alive; database readiness is別監視
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service]
+                properties:
+                  status: {type: string, example: ok}
+                  service: {type: string, example: piatomo-api}
+  /onboarding/complete/:
+    post:
+      tags: [Accounts]
+      summary: 説明と必要な同意の後に初回登録
+      description: 認証済みUIDだけを使用し本人のUserとPeerを作成。重複呼出しは既存を返す。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OnboardingRequest'
+      responses:
+        '201':
+          description: 登録完了
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '200':
+          description: 登録済み
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /users/me/:
+    get:
+      tags: [Accounts]
+      summary: 自分の最小プロフィール取得
+      responses:
+        '200':
+          description: 本人プロフィール
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Profile'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+    patch:
+      tags: [Accounts]
+      summary: 自分の最小プロフィール更新
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                nickname: {type: string, minLength: 1, maxLength: 40}
+                school_level: {$ref: '#/components/schemas/SchoolLevel'}
+                grade: {type: integer, minimum: 1, maximum: 3}
+      responses:
+        '200':
+          description: 更新結果
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Profile'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /users/me/deletion-requests/:
+    post:
+      tags: [Accounts]
+      summary: 退会と個人データ削除申請
+      description: 再認証要否を確認し、アプリへのアクセスを停止して削除ジョブを発行する。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed]
+              additionalProperties: false
+              properties:
+                confirmed: {type: boolean, enum: [true]}
+      responses:
+        '202':
+          description: 削除を受付済み
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deletion_request_id, status]
+                properties:
+                  deletion_request_id: {type: string, format: uuid}
+                  status: {type: string, enum: [queued, processing]}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /peers/me/:
+    get:
+      tags: [Peers]
+      summary: 自分のぴあ友の取得
+      responses:
+        '200':
+          description: ぴあ友
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Peer'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /peers/me/knowledge/:
+    get:
+      tags: [Peers]
+      summary: 共通知識グラフに対する、本人のぴあ友の習得状態
+      parameters:
+        - name: concept_ids
+          in: query
+          description: comma separated concept ids（省略時は利用可能なページ内概念）
+          schema: {type: string}
+      responses:
+        '200':
+          description: 知識状態一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [knowledge_version, items]
+                properties:
+                  knowledge_version: {type: integer, minimum: 0}
+                  items:
+                    type: array
+                    items: {$ref: '#/components/schemas/PeerKnowledge'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /peers/me/knowledge/reset/:
+    post:
+      tags: [Peers]
+      summary: 知識のリセット（説明・影響確認を要する）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, confirmed]
+              additionalProperties: false
+              properties:
+                scope: {type: string, enum: [concepts, all]}
+                concept_ids:
+                  type: array
+                  uniqueItems: true
+                  items: {type: integer, minimum: 1}
+                confirmed: {type: boolean, enum: [true]}
+      responses:
+        '200':
+          description: リセット完了
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [knowledge_version, affected_concept_ids]
+                properties:
+                  knowledge_version: {type: integer}
+                  affected_concept_ids:
+                    type: array
+                    items: {type: integer}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /lessons/:
+    get:
+      tags: [Lessons]
+      summary: 指導要領対応の公開単元・小単元一覧
+      parameters:
+        - name: school_level
+          in: query
+          schema: {$ref: '#/components/schemas/SchoolLevel'}
+        - name: grade
+          in: query
+          description: 学年（中学の1〜3）。高校は科目（subject）で絞る（ADR-031）
+          schema: {type: integer, minimum: 1, maximum: 3}
+        - name: subject
+          in: query
+          schema: {type: string, maxLength: 50}
+        - name: parent_id
+          in: query
+          schema: {type: integer, minimum: 1}
+        - name: page
+          in: query
+          schema: {type: integer, minimum: 1, default: 1}
+      responses:
+        '200':
+          description: レッスン一覧
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: {$ref: '#/components/schemas/Lesson'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /lessons/{lesson_id}/:
+    get:
+      tags: [Lessons]
+      summary: 小単元の詳細
+      parameters:
+        - $ref: '#/components/parameters/LessonId'
+      responses:
+        '200':
+          description: 小単元
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Lesson'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /knowledge-graph/:
+    get:
+      tags: [Lessons]
+      summary: 前提関係を含むグラフ部分取得
+      parameters:
+        - name: lesson_id
+          in: query
+          schema: {type: integer, minimum: 1}
+      responses:
+        '200':
+          description: グラフ
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [nodes, edges]
+                properties:
+                  nodes:
+                    type: array
+                    items: {$ref: '#/components/schemas/ConceptNode'}
+                  edges:
+                    type: array
+                    items: {$ref: '#/components/schemas/ConceptEdge'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /sessions/:
+    get:
+      tags: [Sessions]
+      summary: 本人の授業の一覧（新しい順。ホームの「最近の授業」用）
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, minimum: 1, maximum: 20, default: 3}
+      responses:
+        '200':
+          description: 授業の一覧（会話本文は返さない）
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: {$ref: '#/components/schemas/SessionSummary'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+    post:
+      tags: [Sessions]
+      summary: 単元学習セッション開始（小単元複数選択対応）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode, lesson_ids]
+              additionalProperties: false
+              properties:
+                mode: {type: string, enum: [preset]}
+                lesson_ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  uniqueItems: true
+                  items: {type: integer, minimum: 1}
+      responses:
+        '201':
+          description: 作成完了
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LearningSession'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /sessions/{session_id}/:
+    get:
+      tags: [Sessions]
+      summary: 本人の学習セッション情報取得（会話本文は返さない）
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: セッション
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/LearningSession'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /sessions/{session_id}/messages/:
+    post:
+      tags: [Sessions]
+      summary: 説明や質問を入力し、検証済みのぴあ友の応答を取得
+      description: |
+        会話本文は原則DBへ永続保存しない。request_idで冪等化し、AI待機中は短いトランザクションのみ使用。
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MessageRequest'
+      responses:
+        '200':
+          description: 有効な応答（過去の同じrequest_idの再取得を含む）
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessageResponse'}
+        '202':
+          description: 同一ターンを処理中。Retry-Afterの目安を返す場合がある
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TurnPending'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /sessions/{session_id}/turns/{request_id}/:
+    get:
+      tags: [Sessions]
+      summary: 一時的なターン処理状態の照会
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+        - name: request_id
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: 処理済み
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessageResponse'}
+        '202':
+          description: 処理中
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TurnPending'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '410':
+          description: 応答キャッシュの期限切れ。状態を再取得
+  /sessions/{session_id}/exercises/:
+    post:
+      tags: [Exercises]
+      summary: ユーザーが問題を出し、検証状態を返す
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ExerciseCreateRequest'}
+      responses:
+        '201':
+          description: 問題が登録され検証状態が返る
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Exercise'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /exercises/{exercise_id}/attempt/:
+    post:
+      tags: [Exercises]
+      summary: ぴあ友が問題に挑戦し、解法を検証
+      parameters:
+        - name: exercise_id
+          in: path
+          required: true
+          schema: {type: integer, minimum: 1}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_id]
+              additionalProperties: false
+              properties:
+                request_id: {type: string, format: uuid}
+      responses:
+        '200':
+          description: 確定済みの解答
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ExerciseAttempt'}
+        '202':
+          description: 処理中
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TurnPending'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /sessions/{session_id}/finish/:
+    post:
+      tags: [Sessions]
+      summary: 授業を終了して評価を開始
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '202':
+          description: 評価準備中
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [session_id, status]
+                properties:
+                  session_id: {type: integer}
+                  status: {type: string, enum: [evaluation_pending, evaluation_complete]}
+        '404': {$ref: '#/components/responses/NotFound'}
+  /sessions/{session_id}/evaluation/:
+    get:
+      tags: [Evaluations]
+      summary: 独自の説明力スコアと習得変化
+      parameters:
+        - $ref: '#/components/parameters/SessionId'
+      responses:
+        '200':
+          description: 評価レポート
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EvaluationReport'}
+        '202':
+          description: 評価中
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/TurnPending'}
+        '404': {$ref: '#/components/responses/NotFound'}
+components:
+  securitySchemes:
+    firebaseBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase Client SDK発行IDトークン。サーバー側Admin SDKで検証。
+  parameters:
+    SessionId:
+      name: session_id
+      in: path
+      required: true
+      schema: {type: integer, minimum: 1}
+    LessonId:
+      name: lesson_id
+      in: path
+      required: true
+      schema: {type: integer, minimum: 1}
+  responses:
+    BadRequest:
+      description: 入力エラー
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
+    Unauthorized:
+      description: 認証失敗
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
+    Forbidden:
+      description: 操作権限がない/初回設定未完了
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
+    NotFound:
+      description: 存在しないか所有権がない
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
+    Conflict:
+      description: リクエストID衝突または状態の競合
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/ApiError'}
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: string, example: STALE_KNOWLEDGE_VERSION}
+        message: {type: string, example: 状態が更新されました。最新情報を取得してください。}
+    SchoolLevel:
+      type: string
+      enum: [middle, high]
+    Profile:
+      type: object
+      required: [id, nickname, school_level, grade, onboarding_completed]
+      properties:
+        id: {type: integer, minimum: 1}
+        nickname: {type: string, maxLength: 40}
+        school_level: {$ref: '#/components/schemas/SchoolLevel'}
+        grade: {type: integer, minimum: 1, maximum: 3, nullable: true}
+        onboarding_completed: {type: boolean}
+    OnboardingRequest:
+      type: object
+      required: [nickname, school_level, grade, terms_version, privacy_notice_version, consent_confirmed]
+      additionalProperties: false
+      properties:
+        nickname: {type: string, minLength: 1, maxLength: 40}
+        school_level: {$ref: '#/components/schemas/SchoolLevel'}
+        grade: {type: integer, minimum: 1, maximum: 3}
+        terms_version: {type: string, maxLength: 32}
+        privacy_notice_version: {type: string, maxLength: 32}
+        consent_confirmed: {type: boolean, enum: [true]}
+    Peer:
+      type: object
+      required: [id, name, avatar_id, knowledge_version]
+      properties:
+        id: {type: integer}
+        name: {type: string, example: ぴあ友}
+        avatar_id: {type: string, example: default}
+        knowledge_version: {type: integer, minimum: 0}
+    KnowledgeStatus:
+      type: string
+      enum: [UNKNOWN, INTRODUCED, PRACTICING, MASTERED]
+    PeerKnowledge:
+      type: object
+      required: [concept_id, status, verified_correct, required_correct]
+      properties:
+        concept_id: {type: integer}
+        status: {$ref: '#/components/schemas/KnowledgeStatus'}
+        verified_correct: {type: integer, minimum: 0}
+        required_correct: {type: integer, minimum: 1}
+        reset_epoch: {type: integer, minimum: 0}
+    Lesson:
+      type: object
+      required: [id, title, mode, published, concept_ids]
+      properties:
+        id: {type: integer}
+        parent_id: {type: integer, nullable: true}
+        curriculum_item_code: {type: string, nullable: true}
+        title: {type: string}
+        grade: {type: integer, minimum: 1, maximum: 3, nullable: true, description: 中学の学年。高校の科目はnull}
+        mode: {type: string, enum: [preset, free, inquiry]}
+        published: {type: boolean}
+        concept_ids:
+          type: array
+          items: {type: integer}
+    ConceptNode:
+      type: object
+      required: [id, code, label, status]
+      properties:
+        id: {type: integer}
+        code: {type: string}
+        label: {type: string}
+        description: {type: string, maxLength: 200, nullable: true, description: ノード詳細に出す、ユーザー向けの短い説明}
+        status: {$ref: '#/components/schemas/KnowledgeStatus'}
+    ConceptEdge:
+      type: object
+      required: [source, target, relation]
+      properties:
+        source: {type: integer, description: 前提概念ID}
+        target: {type: integer, description: 後続概念ID}
+        relation: {type: string, enum: [prerequisite, related]}
+    LearningSession:
+      type: object
+      required: [id, status, mode, lesson_ids, knowledge_version]
+      properties:
+        id: {type: integer}
+        status: {type: string, enum: [active, evaluation_pending, finished]}
+        mode: {type: string, enum: [preset, free, inquiry]}
+        lesson_ids:
+          type: array
+          items: {type: integer}
+        knowledge_version: {type: integer}
+        started_at: {type: string, format: date-time}
+    SessionSummary:
+      type: object
+      required: [id, status, mode, lesson_ids, started_at]
+      properties:
+        id: {type: integer}
+        status: {type: string, enum: [active, evaluation_pending, finished]}
+        mode: {type: string, enum: [preset, free, inquiry]}
+        lesson_ids:
+          type: array
+          items: {type: integer}
+        started_at: {type: string, format: date-time}
+        finished_at: {type: string, format: date-time, nullable: true}
+        total_score: {type: number, minimum: 0, maximum: 100, nullable: true, description: 評価が済んでいなければnull}
+    MessageRequest:
+      type: object
+      required: [request_id, content]
+      additionalProperties: false
+      properties:
+        request_id: {type: string, format: uuid}
+        content: {type: string, minLength: 1, maxLength: 4000}
+        recent_context:
+          type: array
+          maxItems: 8
+          description: 非権威の直近会話。サーバーで検証した習得根拠にしてはいけない。
+          items:
+            type: object
+            required: [role, content]
+            additionalProperties: false
+            properties:
+              role: {type: string, enum: [user, peer]}
+              content: {type: string, maxLength: 1000}
+    PeerResponse:
+      type: object
+      required: [action, message, emotion]
+      properties:
+        action: {type: string, enum: [ask_why, request_example, check_prerequisite, contrast_cases, attempt_exercise, explain_back, fallback]}
+        concept_id: {type: integer, nullable: true}
+        message: {type: string}
+        emotion: {type: string, enum: [idle, listening, thinking, question, practice_success, mastery_success]}
+    KnowledgeChange:
+      type: object
+      required: [concept_id, old_status, new_status]
+      properties:
+        concept_id: {type: integer}
+        old_status: {$ref: '#/components/schemas/KnowledgeStatus'}
+        new_status: {$ref: '#/components/schemas/KnowledgeStatus'}
+    MessageResponse:
+      type: object
+      required: [request_id, turn_id, knowledge_version, peer_response, knowledge_changes, fallback_used]
+      properties:
+        request_id: {type: string, format: uuid}
+        turn_id: {type: integer}
+        knowledge_version: {type: integer}
+        peer_response: {$ref: '#/components/schemas/PeerResponse'}
+        knowledge_changes:
+          type: array
+          items: {$ref: '#/components/schemas/KnowledgeChange'}
+        fallback_used: {type: boolean}
+    TurnPending:
+      type: object
+      required: [status]
+      properties:
+        status: {type: string, enum: [processing, evaluation_pending]}
+        request_id: {type: string, format: uuid, nullable: true}
+    ExerciseCreateRequest:
+      type: object
+      required: [request_id, kind, question, target_concept_id]
+      additionalProperties: false
+      properties:
+        request_id: {type: string, format: uuid}
+        kind: {type: string, enum: [math_equation, multiple_choice, free_text]}
+        question: {type: string, maxLength: 2000}
+        latex: {type: string, maxLength: 1500, nullable: true}
+        target_concept_id: {type: integer, minimum: 1}
+    VerificationStatus:
+      type: string
+      enum: [VERIFIED, PROVISIONAL, UNSUPPORTED]
+    Exercise:
+      type: object
+      required: [id, verification_status, kind]
+      properties:
+        id: {type: integer}
+        kind: {type: string}
+        verification_status: {$ref: '#/components/schemas/VerificationStatus'}
+        reason: {type: string, nullable: true}
+        target_concept_id: {type: integer}
+    ExerciseAttempt:
+      type: object
+      required: [id, result, verification_status, knowledge_changes]
+      properties:
+        id: {type: integer}
+        result: {type: string, enum: [correct, incorrect, blocked, unverified]}
+        reason:
+          type: string
+          nullable: true
+          enum: [duplicate_form, provisional, reset_during_attempt, null]
+          description: 習得の回数に入らない理由。回数に入る場合はnull
+        blocked_skill:
+          type: string
+          nullable: true
+          description: result=blockedのとき、足りない技能の表示名（例：両辺を同じ数で割る）
+        verification_status: {$ref: '#/components/schemas/VerificationStatus'}
+        steps:
+          type: array
+          description: 検証済みの解法の1行ずつ。表示用で、DBへ全文を永続保存しない。
+          items:
+            type: object
+            required: [expr]
+            properties:
+              expr: {type: string, description: この行の式（LaTeX）, example: '2x = 4'}
+              skill: {type: string, nullable: true, description: 使った技能のルール名（最初の行はnull）, example: subtract_both_sides}
+              skill_label: {type: string, nullable: true, description: 使った技能の表示名, example: 両辺から同じ数をひく}
+        knowledge_changes:
+          type: array
+          items: {$ref: '#/components/schemas/KnowledgeChange'}
+        knowledge_version: {type: integer}
+    EvaluationCriterion:
+      type: object
+      required: [code, status]
+      properties:
+        code: {type: string, enum: [accuracy, logic, clarity], description: 正確さ・論理性・分かりやすさ}
+        label: {type: string, example: 正確さ}
+        weight: {type: integer, minimum: 0, maximum: 100, example: 40, description: 配点（仮。40・30・30）}
+        status: {type: string, enum: [SCORED, UNRATED]}
+        score: {type: number, minimum: 0, maximum: 100, nullable: true}
+        explanation: {type: string, maxLength: 500, nullable: true}
+    EvaluationReport:
+      type: object
+      required: [status, score_label, criterion_results, mastered_concept_ids]
+      properties:
+        status: {type: string, enum: [COMPLETE, PARTIAL, UNAVAILABLE]}
+        score_label: {type: string, example: ぴあとも独自の説明力スコア}
+        total_score: {type: number, minimum: 0, maximum: 100, nullable: true}
+        rubric_version: {type: string}
+        criterion_results:
+          type: array
+          minItems: 3
+          maxItems: 3
+          items: {$ref: '#/components/schemas/EvaluationCriterion'}
+        mastered_concept_ids:
+          type: array
+          items: {type: integer}
+        knowledge_changes:
+          type: array
+          description: この授業でのぴあ友の習得の変化（前→後）
+          items: {$ref: '#/components/schemas/KnowledgeChange'}
+        next_lesson_ids:
+          type: array
+          maxItems: 3
+          description: 次の学習の候補の小単元ID。公開中の小単元だけ（docs/04 7.1）
+          items: {type: integer}
+        strengths:
+          type: array
+          maxItems: 3
+          description: 良かったところ（ADR-033）。ターンごとの所見から作る。会話の引用や個人情報は入れない
+          items: {type: string, maxLength: 100}
