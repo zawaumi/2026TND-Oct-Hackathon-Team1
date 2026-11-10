@@ -9,7 +9,7 @@
 | accounts | User | id, firebase_uid, school_level, grade, nickname, consent_version, deleted_at | Firebase UIDは非NULLで一意（本番ユーザー） |
 | accounts | DeletionRequest | id, user, state, requested_at, completed_at | 受付・削除の再試行可能性 |
 | peers | Peer | id, owner, display_name, avatar_id, persona_code, knowledge_version | 1ユーザー1ぴあ友（MVP） |
-| peers | PeerKnowledge | peer, concept, status, reset_epoch, mastered_at | (peer, concept)一意 |
+| peers | PeerKnowledge | peer, concept, status, verified_correct, reset_epoch, mastered_at | (peer, concept)一意。行がない概念は未習（UNKNOWN）として返す |
 | lessons | CurriculumRevision | id, code, name, issued_year, source_url | 告示版ごとに管理 |
 | lessons | CurriculumItem | id, revision, parent, official_code, title, type | (revision, official_code)可能な範囲で一意 |
 | lessons | Lesson | id, parent, curriculum_item, title, school_level, grade, subject, scope, owner, status, mode, sort_order | 階層の循環禁止。`grade`は中学の学年（高校の科目はNULL、ADR-031）。CURATEDは所有者なし、PRIVATEは所有者が必須 |

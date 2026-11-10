@@ -41,7 +41,7 @@ cd apps/api
 source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py test accounts config lessons
+python manage.py test accounts config lessons peers
 ```
 
 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_HOST`、`POSTGRES_PORT` を API プロセスに渡します。ホストからは `POSTGRES_HOST=127.0.0.1`、Compose 内の別サービスからは `db` を使います。ホスト側ポートが使用中なら `.env` の `POSTGRES_PORT` を変更してください。既存ボリュームの DB 名・ユーザー・パスワードは `.env` の変更だけでは更新されません。
@@ -57,3 +57,12 @@ python manage.py test accounts config lessons
 - 公開教材（`CURATED`）は所有者なし、私有（`PRIVATE`）は所有者が必須です（DB の制約）。
 - `Lesson.grade` は中学の学年（1〜3）で、高校の科目は空にします。`subject` は教科・科目のコード（例：`math`）です。
 - 教材データは管理画面（`/admin/`）からも入力できます。
+
+## ぴあ友（peers）
+
+ぴあ友（`Peer`）はユーザー1人に1人で、初めて `GET /api/v1/peers/me/` などを呼んだときに作られます。知識の状態（`PeerKnowledge`）は（ぴあ友, 概念）ごとに1行で、行がない概念は「未習」として返します。
+
+- `GET /api/v1/peers/me/`：本人のぴあ友
+- `GET /api/v1/peers/me/knowledge/?concept_ids=1,2`：本人のぴあ友の知識の状態。省略すると、見てよい概念（公開教材と本人の私有）すべて
+- 状態を変えるのは状態の遷移サービス（#21）だけです。`required_correct` は習得判定（#39）ができるまで既定値の2を返します。
+- ログインの確認（#11）ができるまでは、テストでは `force_authenticate` で本人として呼びます。
