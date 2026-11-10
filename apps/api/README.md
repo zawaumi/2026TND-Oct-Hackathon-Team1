@@ -41,9 +41,19 @@ cd apps/api
 source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py test accounts config
+python manage.py test accounts config lessons
 ```
 
 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_HOST`、`POSTGRES_PORT` を API プロセスに渡します。ホストからは `POSTGRES_HOST=127.0.0.1`、Compose 内の別サービスからは `db` を使います。ホスト側ポートが使用中なら `.env` の `POSTGRES_PORT` を変更してください。既存ボリュームの DB 名・ユーザー・パスワードは `.env` の変更だけでは更新されません。
 
 開発時にこれらの環境変数がすべて未設定なら SQLite を使用し、一部だけ設定された場合はエラーになります。本番では PostgreSQL の全設定が必須です。`docker compose down` はデータを保持します。`docker compose down -v` はボリューム内の DB データをすべて削除します。
+
+## 教材（lessons）
+
+学習指導要領の階層（`CurriculumRevision`・`CurriculumItem`）、アプリで選ぶ教材（`Lesson`）、概念（`Concept`）、教材と概念の対応（`LessonConcept`）を持ちます（docs/02 の 1〜3）。
+
+- `Lesson.parent` で領域 → 単元 → 小単元のように何段でも深くできます。親子が循環する保存は `lessons/services.py` の確認で拒否します。
+- 同じ概念は1件だけ作り、複数の教材から `LessonConcept` で参照します。同じ教材と概念の組は1件だけです。
+- 公開教材（`CURATED`）は所有者なし、私有（`PRIVATE`）は所有者が必須です（DB の制約）。
+- `Lesson.grade` は中学の学年（1〜3）で、高校の科目は空にします。`subject` は教科・科目のコード（例：`math`）です。
+- 教材データは管理画面（`/admin/`）からも入力できます。
