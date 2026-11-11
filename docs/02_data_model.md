@@ -20,6 +20,7 @@
 | learning | LearningSession | id, owner, peer, mode, status, knowledge_version, started_at, finished_at | owner/peerの一致。statusは active・evaluation_pending・finished |
 | learning | SessionLesson | session, lesson, sort_order | (session, lesson)一意：複数小単元対応 |
 | learning | LearningTurn | session, request_id, input_hash, status, knowledge_version, expires_at, result_cache | (session, request_id)一意；短期キャッシュはTTL |
+| learning | TurnNote | session, turn, criterion, note | ターンごとの所見（観点のコード＋100字以内）。授業の評価が終わるまでだけ保存（docs/03 G） |
 | exercises | Exercise | id, session, lesson, kind, verification_status, target_concept, question_fingerprint | 本文は長期保存しない方針。必要ならクライアントへ返す |
 | exercises | ExerciseAttempt | id, exercise, peer, result, reason, blocked_skill, verified_at, steps_verified, reset_epoch | 1要求1確定；明示的な検証結果。`reason`は習得の回数に入らない理由（`duplicate_form`等） |
 | exercises | AttemptSkill | attempt, concept, step_index, verified | (attempt, concept, step_index)一意 |

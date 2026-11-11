@@ -112,3 +112,18 @@ $env:DEEPSEEK_API_KEY = "（中澤さんから受け取ったキー）"
 python manage.py deepseek_check
 ```
 `error=None` と、`action`・`message` などが入った JSON が出れば成功です。
+
+## 教える1ターン（#29・#31・#32）
+
+`POST /api/v1/sessions/{id}/messages/`（`{"request_id": "<UUID>", "content": "説明", "recent_context": [...]}`）で説明を送ると、検証済みのぴあ友の応答が返ります（`learning/turns.py`）。
+
+1. **受付**（`#23`・`#24` の最小限）：(授業, `request_id`) で一意。同じ送信の再送は前の結果を返し（二重に処理しない）、同じ ID で違う内容は 409 `REQUEST_ID_CONFLICT`。同じ授業で別の送信を処理中なら 409 `TURN_IN_PROGRESS`。処理中の再送は 202。60秒を過ぎた処理中・失敗した送信は、同じ ID で送り直せます。
+2. **入力の検査**（`#26` の最小限、`learning/input_check.py`）：空・4000字超は 400。命令らしい文が混ざっていれば「データとしてだけ扱う」（`DATA_ONLY`）にし、知識の状態は変えません。
+3. **方針**（#29、`learning/policy.py`）：DRF が action と対象の概念を決めます。対象は授業の概念のうち、まだ習得済みでない最初のもの。理由がなければ `ask_why`、例がなければ `request_example`、初めての説明なら `explain_back`、そのあとは `contrast_cases` と `attempt_exercise` を交互に。前提（#16）が足りなければ `check_prerequisite`。同じ入力なら同じ結果です。Jev（#28）ができたら、理由・例の判定をそれに置き換えます。
+4. **DeepSeek**（#30）：DB のロックを持たずに呼びます。
+5. **出力の検証**（#31、`learning/validation.py`）：形・action・概念が DRF の決めたものと同じか、自分で「習得した」と言っていないか、答え（`x = 4` など）を言っていないかを確かめます。だめなら `action=fallback` の定型文にし、知識は変えません（`fallback_used: true`）。表情の `mastery_success` は DRF だけが決めます。
+6. **確定**：ぴあ友の知識の版が受付のときと同じなら、未習の概念を「説明済み」に進めて応答を保存します。変わっていれば 409 `STALE_KNOWLEDGE_VERSION`。状態を変えるのは `peers/knowledge.py` の `advance` だけです（`#21` の最小限：1段ずつ、戻さない、習得済みは習得判定 #39 だけ）。
+
+ターンごとの所見（観点のコード＋100字以内）は `TurnNote` に保存し、授業の評価（#42）で観点の説明と「良かったところ」を作るのに使います。会話の本文はサーバーに保存しません（`LearningTurn.result_cache` は再送に答えるための、画面に返した応答だけ）。
+
+`GET /api/v1/sessions/{id}/turns/{request_id}/`：処理中なら 202、終わっていれば 200（同じ応答）、失敗・期限切れなら 410。
