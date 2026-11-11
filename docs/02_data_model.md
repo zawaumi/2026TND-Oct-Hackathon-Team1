@@ -17,9 +17,9 @@
 | lessons | LessonConcept | lesson, concept, sort_order | (lesson, concept)一意 |
 | lessons | ConceptPrerequisite | concept, prerequisite | 自己参照/循環禁止、同一エッジ一意 |
 | lessons | MasteryPolicy | concept, version, required_correct, required_variants, require_application | conceptの有効版を一意に指定 |
-| sessions | LearningSession | id, owner, peer, mode, status, created_at, finished_at | owner/peerの一致 |
-| sessions | SessionLesson | session, lesson, sort_order | (session, lesson)一意：複数小単元対応 |
-| sessions | LearningTurn | session, request_id, input_hash, status, knowledge_version, expires_at, result_cache | (session, request_id)一意；短期キャッシュはTTL |
+| learning | LearningSession | id, owner, peer, mode, status, knowledge_version, started_at, finished_at | owner/peerの一致。statusは active・evaluation_pending・finished |
+| learning | SessionLesson | session, lesson, sort_order | (session, lesson)一意：複数小単元対応 |
+| learning | LearningTurn | session, request_id, input_hash, status, knowledge_version, expires_at, result_cache | (session, request_id)一意；短期キャッシュはTTL |
 | exercises | Exercise | id, session, lesson, kind, verification_status, target_concept, question_fingerprint | 本文は長期保存しない方針。必要ならクライアントへ返す |
 | exercises | ExerciseAttempt | id, exercise, peer, result, reason, blocked_skill, verified_at, steps_verified, reset_epoch | 1要求1確定；明示的な検証結果。`reason`は習得の回数に入らない理由（`duplicate_form`等） |
 | exercises | AttemptSkill | attempt, concept, step_index, verified | (attempt, concept, step_index)一意 |
@@ -28,6 +28,8 @@
 | evaluations | Criterion | rubric, code, perspective, weight, levels | (rubric, code)一意。codeは`accuracy`・`logic`・`clarity`の3つ、weightは40・30・30（仮。ADR-015） |
 | evaluations | Evaluation | session, rubric, engine, model_version, status, total_score | 推定値 / 公式評定ではない |
 | evaluations | CriterionResult | evaluation, criterion, score, confidence, evidence_ref | (evaluation, criterion)一意 |
+
+※ 授業のアプリ名は、Django標準の`sessions`と重ならないよう`learning`にした（表の「learning」）。
 
 ※ Djangoのフィールド実装は「所有者の参照を含む一意制約」「事前にvalidateした循環のないグラフ」「状態遷移Service経由のみ更新」を前提とする。DB制約だけではDAGの循環防止や所有者横断参照までは自動保証できないのでService層・テストで補完する。
 

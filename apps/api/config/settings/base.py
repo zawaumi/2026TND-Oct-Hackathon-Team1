@@ -13,6 +13,7 @@ INSTALLED_APPS = [
     "accounts",
     "lessons",
     "peers",
+    "learning",
 ]
 
 MIDDLEWARE = [
