@@ -16,12 +16,18 @@ export * from "./types";
 const BASE_URL = (process.env.NEXT_PUBLIC_API_BASE_URL ?? "").replace(/\/$/, "");
 
 /**
- * ログインのトークンを返す関数。#10（Firebase Authentication）で差し込む。
- * それまでは何も付けない。
+ * ログインのトークン（Firebase の ID トークン）を返す関数。lib/auth が登録する。
+ * 登録されるまでは何も付けない。
  */
 let getIdToken: () => Promise<string | null> = async () => null;
 export function setIdTokenProvider(fn: () => Promise<string | null>) {
   getIdToken = fn;
+}
+
+/** 401（ログインが切れた）を受けたときに呼ぶ処理。ログインの仕組み（lib/auth）が登録する */
+let onUnauthorized: () => void = () => {};
+export function setUnauthorizedHandler(fn: () => void) {
+  onUnauthorized = fn;
 }
 
 function retryAfterMs(res: Response): number {
@@ -51,6 +57,8 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   } catch {
     // 本文がJSONでないときは既定の文言のまま
   }
+  // ログインが切れた → ログイン画面へ（docs/04 の 10）
+  if (res.status === 401) onUnauthorized();
   throw new ApiError(res.status, code, message);
 }
 
@@ -129,7 +137,13 @@ function lazyMock(): ApiClient {
       typeof name !== "string" || name === "then"
         ? undefined
         : (...args: unknown[]) =>
-            load().then((client) => (client[name as keyof ApiClient] as (...a: unknown[]) => unknown)(...args)),
+            load()
+              .then((client) => (client[name as keyof ApiClient] as (...a: unknown[]) => unknown)(...args))
+              .catch((e: unknown) => {
+                // 本物と同じく、401 ならログイン画面へ
+                if (e instanceof ApiError && e.status === 401) onUnauthorized();
+                throw e;
+              }),
   });
 }
 

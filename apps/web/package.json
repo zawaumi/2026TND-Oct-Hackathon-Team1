@@ -12,6 +12,7 @@
     "gen:api": "openapi-typescript ../../contracts/openapi.yaml -o src/lib/api/schema.d.ts"
   },
   "dependencies": {
+    "firebase": "^12.19.0",
     "next": "16.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"
