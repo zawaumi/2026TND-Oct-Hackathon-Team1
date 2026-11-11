@@ -7,6 +7,18 @@
  * - "#409"    … 状態の競合（409）を返す
  * - "#neterr" … 1回目だけ通信エラー。同じ request_id で再送すると届く
  * - "#mastered" … 「移項」が習得済みになる（帯とアバターの確認用）
+ *
+ * 画面全体の状態を切り替えるシナリオ（URL に ?mock=… を付ける。ページを移っても続く。?mock=normal で戻す）：
+ * - normal       … ふつうの動き
+ * - emptyLessons … 教材が1つもない
+ * - unauthorized … すべて 401（ログインが切れた）
+ * - notFound     … 授業まわりがすべて 404
+ * - pending      … 送信・解答・評価がずっと「処理中」（202）のまま
+ * - networkError … すべて通信エラー
+ * ぴあ友の解答の結果だけを決めるときは ?mock_attempt=auto|correct|duplicate_form|blocked|unverified
+ *
+ * このファイルは NEXT_PUBLIC_API_MOCK=true か開発中のときだけ読み込まれる（client.ts）。
+ * 本番の成果物にこのファイルが入っていないことを scripts/check-no-mock.mjs が目印の文字列で確かめる。
  */
 import {
   ApiError,
@@ -14,7 +26,10 @@ import {
   type ConceptNode,
   type KnowledgeChange,
   type LearningSession,
+  type AttemptResult,
   type EvaluationReport,
+  type Exercise,
+  type ExerciseAttempt,
   type Lesson,
   type MessageResponse,
   type PeerKnowledge,
@@ -24,7 +39,44 @@ import {
   type TurnResult,
 } from "./types";
 
+/** 本番の成果物にこの文字列が残っていたらビルドを失敗させる（scripts/check-no-mock.mjs） */
+export const MOCK_MARKER = "__PIATOMO_API_MOCK__";
+(globalThis as Record<string, unknown>)[MOCK_MARKER] = true;
+
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/* ───────── シナリオ（?mock=…） ───────── */
+
+const SCENARIOS = ["normal", "emptyLessons", "unauthorized", "notFound", "pending", "networkError"] as const;
+type Scenario = (typeof SCENARIOS)[number];
+const SCENARIO_KEY = "piatomo.mock.scenario";
+const ATTEMPT_KEY = "piatomo.mock.attempt";
+let scenarioOverride: Scenario | null = null;
+
+/** URL の ?name=… を優先し、sessionStorage に覚えておく（ページを移っても続く） */
+function pickFromUrl<T extends string>(param: string, key: string, all: readonly T[], fallback: T): T {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const q = new URLSearchParams(window.location.search).get(param);
+    if (q && (all as readonly string[]).includes(q)) {
+      sessionStorage.setItem(key, q);
+      return q as T;
+    }
+    const saved = sessionStorage.getItem(key);
+    if (saved && (all as readonly string[]).includes(saved)) return saved as T;
+  } catch {
+    // 保存できない環境では既定のまま
+  }
+  return fallback;
+}
+
+export const currentScenario = (): Scenario =>
+  scenarioOverride ?? pickFromUrl("mock", SCENARIO_KEY, SCENARIOS, "normal");
+
+/** テストや開発用：シナリオをコードから切り替える（null で URL・保存値に戻す） */
+export function setMockScenario(s: Scenario | null) {
+  scenarioOverride = s;
+}
 
 // 領域 → 単元 → 小単元。公開している小単元は3つだけ（ADR-028）
 const LESSONS: Lesson[] = [
@@ -199,7 +251,128 @@ function makeEvaluation(sessionId: number): EvaluationReport {
   };
 }
 
-export const mockClient: ApiClient = {
+/* ───────── 出題（問題を出す・ぴあ友の解答） ───────── */
+
+type MockExercise = Exercise & { latex: string; form: string; question: string };
+const exercises = new Map<number, MockExercise>();
+const attempts = new Map<string, ExerciseAttempt>(); // request_id → 結果（冪等）
+const countedForms = new Map<number, Set<string>>(); // 概念 → 習得の回数に入れた問題の形
+let nextExerciseId = 201;
+let nextAttemptId = 301;
+let onboarded = true;
+
+/** 数字を n に置き換えた「問題の形」。同じ形の問題は習得の回数に入れない（duplicate_form） */
+const formOf = (latex: string) => latex.replace(/\s+/g, "").replace(/\d+/g, "n");
+
+/** 一次方程式 ax + b = c（a・b・c は整数、x は左辺）だけを解く。解けなければ null */
+function solveSimple(latex: string): { a: number; b: number; c: number } | null {
+  const m = latex.replace(/\s+/g, "").match(/^(-?\d*)x([+-]\d+)?=(-?\d+)$/);
+  if (!m) return null;
+  const a = m[1] === "" ? 1 : m[1] === "-" ? -1 : Number(m[1]);
+  const b = m[2] ? Number(m[2]) : 0;
+  const c = Number(m[3]);
+  return a === 0 ? null : { a, b, c };
+}
+
+type AttemptMode = "auto" | "correct" | "duplicate_form" | "blocked" | "unverified";
+const ATTEMPT_MODES: AttemptMode[] = ["auto", "correct", "duplicate_form", "blocked", "unverified"];
+
+function makeAttempt(ex: MockExercise): ExerciseAttempt {
+  const mode = pickFromUrl("mock_attempt", ATTEMPT_KEY, ATTEMPT_MODES, "auto");
+  const base = { id: nextAttemptId++, verification_status: ex.verification_status, knowledge_changes: [] as KnowledgeChange[] };
+  const blocked = mode === "blocked" || (mode === "auto" && ex.latex.includes("\\frac"));
+  if (blocked) {
+    return {
+      ...base,
+      result: "blocked",
+      blocked_skill: "両辺に同じ数をかける",
+      steps: [{ expr: ex.latex, skill: null, skill_label: null }],
+      knowledge_version: knowledgeVersion,
+    };
+  }
+  const solved = solveSimple(ex.latex);
+  if (mode === "unverified" || (mode === "auto" && !solved)) {
+    return { ...base, result: "unverified", verification_status: "UNSUPPORTED", steps: [], knowledge_version: knowledgeVersion };
+  }
+  const { a, b, c } = solved ?? { a: 1, b: 3, c: 7 };
+  const rhs = c - b;
+  const steps: ExerciseAttempt["steps"] = [{ expr: ex.latex, skill: null, skill_label: null }];
+  if (b !== 0) {
+    steps.push({ expr: `${a === 1 ? "" : a}x=${rhs}`, skill: "subtract_both_sides", skill_label: "両辺から同じ数をひく" });
+  }
+  if (a !== 1) {
+    steps.push({ expr: `x=${rhs / a}`, skill: "divide_both_sides", skill_label: "両辺を同じ数でわる" });
+  }
+  const target = ex.target_concept_id ?? 103;
+  const forms = countedForms.get(target) ?? new Set<string>();
+  const duplicate = mode === "duplicate_form" || (mode === "auto" && forms.has(ex.form));
+  if (duplicate) {
+    return { ...base, result: "correct", reason: "duplicate_form", steps, knowledge_version: knowledgeVersion };
+  }
+  // 検証済みの正答：回数を増やし、必要な数に届いたら習得済み
+  forms.add(ex.form);
+  countedForms.set(target, forms);
+  const k = knowledge.get(target);
+  const changes: KnowledgeChange[] = [];
+  if (k) {
+    k.verified_correct += 1;
+    const next = k.verified_correct >= k.required_correct ? "MASTERED" : k.status === "MASTERED" ? "MASTERED" : "PRACTICING";
+    const change = applyChange({ concept_id: target, new_status: next });
+    if (change) changes.push(change);
+    else knowledgeVersion += 1;
+  }
+  return { ...base, result: "correct", reason: null, steps, knowledge_changes: changes, knowledge_version: knowledgeVersion };
+}
+
+const baseMock: ApiClient = {
+  async completeOnboarding(body) {
+    await wait(300);
+    const created = !onboarded;
+    onboarded = true;
+    Object.assign(PROFILE, { nickname: body.nickname, school_level: body.school_level, grade: body.grade, onboarding_completed: true });
+    return { created, profile: { ...PROFILE } };
+  },
+  async getPeer() {
+    await wait(100);
+    return { id: 1, name: "ぴあ友", avatar_id: "default", knowledge_version: knowledgeVersion };
+  },
+  async createExercise(_sessionId, body) {
+    await wait(400);
+    const latex = (body.latex ?? body.question).trim();
+    // 対応範囲は一次方程式（文字1つ）だけ（docs/04 の 5.4）
+    const unsupported = /\^|\\sqrt|[a-wyz]/.test(latex.replace(/\\frac/g, "")) || !latex.includes("=");
+    const ex: MockExercise = {
+      id: nextExerciseId++,
+      kind: body.kind,
+      verification_status: unsupported ? "UNSUPPORTED" : "VERIFIED",
+      reason: unsupported ? "一次方程式（文字1つ）だけに対応しています" : null,
+      target_concept_id: body.target_concept_id,
+      latex,
+      form: formOf(latex),
+      question: body.question,
+    };
+    exercises.set(ex.id, ex);
+    return {
+      id: ex.id,
+      kind: ex.kind,
+      verification_status: ex.verification_status,
+      reason: ex.reason,
+      target_concept_id: ex.target_concept_id,
+    };
+  },
+  async attemptExercise(exerciseId, requestId): Promise<AttemptResult> {
+    await wait(900);
+    const done = attempts.get(requestId);
+    if (done) return { kind: "done", data: done };
+    const ex = exercises.get(exerciseId);
+    if (!ex) throw new ApiError(404, "NOT_FOUND", "問題が見つかりません");
+    if (ex.verification_status === "UNSUPPORTED") {
+      throw new ApiError(400, "UNSUPPORTED_EXERCISE", ex.reason ?? "この問題には対応していません");
+    }
+    const res = makeAttempt(ex);
+    attempts.set(requestId, res);
+    return { kind: "done", data: res };
+  },
   async getEvaluation(sessionId) {
     await wait(300);
     // 1回目は「評価中」を返す
@@ -308,3 +481,47 @@ export const mockClient: ApiClient = {
     return { session_id: sessionId, status: "evaluation_pending" };
   },
 };
+
+/* ───────── シナリオをすべての呼び出しにかぶせる ───────── */
+
+const SESSION_METHODS = new Set<keyof ApiClient>([
+  "getSession",
+  "postMessage",
+  "getTurn",
+  "finishSession",
+  "getEvaluation",
+  "createExercise",
+  "attemptExercise",
+]);
+
+export const mockClient: ApiClient = new Proxy(baseMock, {
+  get(target, name: string | symbol) {
+    const method = Reflect.get(target, name) as unknown;
+    // メソッド以外（Promise が確かめる then など）はそのまま返す
+    if (typeof name !== "string" || typeof method !== "function") return method;
+    return async (...args: unknown[]) => {
+      const scenario = currentScenario();
+      if (scenario === "networkError") {
+        await wait(300);
+        throw new ApiError(0, "NETWORK_ERROR", "通信できませんでした");
+      }
+      if (scenario === "unauthorized") {
+        await wait(200);
+        throw new ApiError(401, "UNAUTHORIZED", "ログインしてください。");
+      }
+      if (scenario === "notFound" && SESSION_METHODS.has(name as keyof ApiClient)) {
+        await wait(200);
+        throw new ApiError(404, "NOT_FOUND", "授業が見つかりません。");
+      }
+      if (scenario === "emptyLessons" && name === "getLessons") {
+        await wait(200);
+        return [];
+      }
+      if (scenario === "pending" && ["postMessage", "getTurn", "getEvaluation", "attemptExercise"].includes(name)) {
+        await wait(300);
+        return { kind: "pending", retryAfterMs: 1500 };
+      }
+      return method.apply(target, args);
+    };
+  },
+});

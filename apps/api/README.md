@@ -93,3 +93,22 @@ Django 標準の `sessions` と名前が重ならないよう、授業のアプ�
 - `GET /api/v1/sessions/?limit=`：本人の授業（新しい順）。点数は評価（#42）ができるまで `null`。
 - `GET /api/v1/sessions/{id}/`：本人の授業。他人の授業は 404。
 - `POST /api/v1/sessions/{id}/finish/`：授業を終えて評価待ちにします（202）。2回呼んでも変わりません。
+
+## 外部AI：DeepSeek（#30・#27）
+
+`integrations/` に DeepSeek とのつなぎがあります。方針（`action`）と対象の概念は DRF が決め、DeepSeek はぴあ友らしい1つの質問を作るだけです（docs/03 の B）。返ってきた JSON は検証前のものなので、そのまま画面に出さず、出力の検証（#31）を通します。
+
+- **キーはサーバーの環境変数だけ**：`DEEPSEEK_API_KEY`。リポジトリ・`.env.example`・`NEXT_PUBLIC_*` には書きません。本番は Cloud Run の環境変数か Secret Manager（#57）。
+- **キーがないときはモック**：テストや開発はキーなしで動きます。`DEEPSEEK_MOCK=true` でキーがあってもモックにできます。`DEEPSEEK_MOCK_MODE` で `normal`・`invalid_json`・`http_error`・`timeout`・`master_all` を再現できます。
+- **送るデータは最小限**（#27、`integrations/payload.py`）：教材の名前と説明、方針、直近6件までの会話、今回の説明文だけ。ユーザーの ID・メール・トークンは送りません。文章中のメール・電話番号・URL は伏せ字にします（完全ではありません）。
+- **ログ**：結果の種類と時間だけ。キーや会話の中身は出しません。
+- その他の設定：`DEEPSEEK_BASE_URL`（既定 `https://api.deepseek.com`）、`DEEPSEEK_MODEL`（既定 `deepseek-chat`）、`DEEPSEEK_TIMEOUT_SECONDS`（既定 15）。
+
+キーを入れたら、1回だけ本物につないで確かめられます。
+
+```powershell
+# PowerShell（このウィンドウの間だけ有効）
+$env:DEEPSEEK_API_KEY = "（中澤さんから受け取ったキー）"
+python manage.py deepseek_check
+```
+`error=None` と、`action`・`message` などが入った JSON が出れば成功です。

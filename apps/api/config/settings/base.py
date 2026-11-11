@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -14,6 +15,7 @@ INSTALLED_APPS = [
     "lessons",
     "peers",
     "learning",
+    "integrations",
 ]
 
 MIDDLEWARE = [
@@ -55,3 +57,12 @@ STATIC_URL = "static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"
+
+# --- 外部AI（DeepSeek、#30）。キーはサーバーの環境変数からだけ読む。NEXT_PUBLIC_* には置かない ---
+DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
+DEEPSEEK_TIMEOUT_SECONDS = float(os.environ.get("DEEPSEEK_TIMEOUT_SECONDS", "15"))
+# キーがあってもモックを使いたいとき（テストなど）は DEEPSEEK_MOCK=true
+DEEPSEEK_MOCK = os.environ.get("DEEPSEEK_MOCK", "").lower() == "true"
+DEEPSEEK_MOCK_MODE = os.environ.get("DEEPSEEK_MOCK_MODE", "normal")
