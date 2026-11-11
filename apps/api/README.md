@@ -24,7 +24,26 @@ python manage.py runserver
 
 `accounts.User` は Firebase UID を一意の識別子として使います。通常ユーザーは初回設定と必要な同意の完了後に作成します。管理者は `python manage.py createsuperuser` で UID とパスワードを指定して作成できます。ユーザーモデルは初回マイグレーション前に設定する必要があるため、既存の開発用 DB に既定のユーザーモデルを移行済みの場合はデータ移行が必要です。
 
-`python manage.py test accounts` でユーザー作成と UID の一意制約を確認できます。
+`python manage.py test accounts` でユーザー作成と UID の一意制約、ログインと初回設定を確認できます。
+
+## ログインと初回設定（#11・#12）
+
+画面は Firebase Authentication でログインし、API を呼ぶたびに `Authorization: Bearer <ID トークン>` を付けます（`apps/web/src/lib/api/client.ts`）。API はそのトークンを確かめて、本人を決めます（`accounts/firebase.py`・`accounts/authentication.py`）。
+
+- 確かめること：Google の公開鍵での署名（RS256）、対象（`aud`）が `FIREBASE_PROJECT_ID`、発行者（`iss`）が `https://securetoken.google.com/<プロジェクト ID>`、有効期限、UID（`sub`）。公開鍵は Google の指定する時間だけ使い回します。
+- 失効の確認（ログアウトしたトークンを止める）はしません。トークンの有効期限が1時間と短いためです（MVP の範囲）。
+- トークンがない・正しくない・期限切れ → 401（`UNAUTHORIZED` / `INVALID_TOKEN`）。画面はログイン画面へ戻します。
+- ログインはしているが未登録 → 403 `ONBOARDING_REQUIRED`。認証の処理ではユーザーを作りません。
+- `GET /api/v1/users/me/`：本人の最小プロフィール（`id`・`nickname`・`school_level`・`grade`・`onboarding_completed`）。
+- `POST /api/v1/onboarding/complete/`：説明と同意のあとに初回登録します（未登録でも呼べる唯一の API）。`consent_confirmed: true` と、同意した規約・データの扱いの説明の版（`terms_version`・`privacy_notice_version`）が必要です。ユーザーとぴあ友を作って 201。登録済みなら中身を変えずに 200。GET では登録しません。
+- エラーは、どの API も `{"code": "...", "message": "..."}` の形で返します（`config/exceptions.py`）。
+
+| 環境変数 | 意味 | 既定 |
+| --- | --- | --- |
+| `FIREBASE_PROJECT_ID` | トークンの対象のプロジェクト（公開してよい値） | `tnd2026-oct-hackathon` |
+| `CORS_ALLOWED_ORIGINS` | 画面から API を直接呼んでよい場所（カンマ区切り） | 開発：`http://localhost:3000,http://127.0.0.1:3000`、本番：なし |
+
+本番は Firebase Hosting から `/api/**` を Cloud Run へ転送して同じ場所に見せるので（#56）、CORS の許可は要りません。手元で画面（`npm run dev`）から本物の API を使うときは、`apps/web/.env.local` に `NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000` を書きます。
 
 ## ローカル PostgreSQL
 
@@ -60,12 +79,12 @@ python manage.py test
 
 ## ぴあ友（peers）
 
-ぴあ友（`Peer`）はユーザー1人に1人で、初めて `GET /api/v1/peers/me/` などを呼んだときに作られます。知識の状態（`PeerKnowledge`）は（ぴあ友, 概念）ごとに1行で、行がない概念は「未習」として返します。
+ぴあ友（`Peer`）はユーザー1人に1人で、初回設定（`POST /api/v1/onboarding/complete/`）のときに作られます（それより前のユーザーは、初めて `GET /api/v1/peers/me/` などを呼んだときに作られます）。知識の状態（`PeerKnowledge`）は（ぴあ友, 概念）ごとに1行で、行がない概念は「未習」として返します。
 
 - `GET /api/v1/peers/me/`：本人のぴあ友
 - `GET /api/v1/peers/me/knowledge/?concept_ids=1,2`：本人のぴあ友の知識の状態。省略すると、見てよい概念（公開教材と本人の私有）すべて
 - 状態を変えるのは状態の遷移サービス（#21）だけです。`required_correct` は習得判定（#39）ができるまで既定値の2を返します。
-- ログインの確認（#11）ができるまでは、テストでは `force_authenticate` で本人として呼びます。
+- テストでは、ログインの確認（#11）を通さずに `force_authenticate` で本人として呼んでかまいません（ログインそのものは `accounts/test_auth.py` で確かめます）。
 
 ## PR のチェック（CI）
 

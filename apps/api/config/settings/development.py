@@ -10,3 +10,7 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"]
 
 if any(name in os.environ for name in ("POSTGRES_DB", "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_HOST", "POSTGRES_PORT")):
     DATABASES = {"default": postgres_database()}
+
+# 開発中は、画面の開発サーバーからの呼び出しを許可する（環境変数で上書きしていなければ）
+if not CORS_ALLOWED_ORIGINS:  # noqa: F405
+    CORS_ALLOWED_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]

@@ -20,6 +20,8 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    # 開発中に画面（localhost:3000）から API を呼べるようにする（config/cors.py）
+    "config.cors.SimpleCorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -66,3 +68,20 @@ DEEPSEEK_TIMEOUT_SECONDS = float(os.environ.get("DEEPSEEK_TIMEOUT_SECONDS", "15"
 # キーがあってもモックを使いたいとき（テストなど）は DEEPSEEK_MOCK=true
 DEEPSEEK_MOCK = os.environ.get("DEEPSEEK_MOCK", "").lower() == "true"
 DEEPSEEK_MOCK_MODE = os.environ.get("DEEPSEEK_MOCK_MODE", "normal")
+
+# --- ログイン（Firebase の ID トークン、#11） ---
+# プロジェクト ID は公開してよい値（画面の apps/web/src/lib/auth/firebase.ts と同じ）
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "tnd2026-oct-hackathon")
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "accounts.authentication.FirebaseAuthentication",
+        # 管理画面（/admin/）にログインしたまま API を見るとき用
+        "rest_framework.authentication.SessionAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
+    "EXCEPTION_HANDLER": "config.exceptions.api_exception_handler",
+}
+
+# 画面から API を直接呼んでよい場所（開発用）。本番は Hosting の転送で同じ場所に見せるので空でよい
+CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
