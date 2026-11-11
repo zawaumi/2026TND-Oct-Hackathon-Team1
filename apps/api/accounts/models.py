@@ -34,6 +34,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     grade = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(3)])
     is_staff = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
+    # 初回設定で同意した規約・データの扱いの説明の版と日時（#12）。同意していなければ空
+    terms_version = models.CharField(max_length=32, blank=True)
+    privacy_notice_version = models.CharField(max_length=32, blank=True)
+    consented_at = models.DateTimeField(null=True, blank=True)
 
     objects = UserManager()
     USERNAME_FIELD = "firebase_uid"
@@ -44,3 +48,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return self.firebase_uid
+
+    @property
+    def onboarding_completed(self):
+        return self.consented_at is not None
