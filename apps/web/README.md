@@ -17,14 +17,34 @@ npm run gen:api     # contracts/openapi.yaml から API の型（src/lib/api/sch
 ```
 
 ## APIとモック
-- 画面は `src/lib/api/client.ts` の `api` を通して API を呼ぶ。
+- 画面は `src/lib/api/client.ts` の `api` を通して API を呼ぶ。窓口はこの1つだけにする。
+- 型は `contracts/openapi.yaml` から自動で作る（`npm run gen:api` → `src/lib/api/schema.d.ts`）。手で型を書かない。
+- エラーは `ApiError`（`status` が 0 なら通信できなかった）。判定には `isUnauthorized`・`isNotFound`・`isNetworkError` を使う。
 - `npm run dev` で `NEXT_PUBLIC_API_BASE_URL` を設定していないときは、**モック**（`src/lib/api/mock.ts`）が動く。
-  本物の API ができるまで、画面はモックで作って確かめる。
 - 本物の API につなぐときは、`apps/web/.env.local` に次を書く（このファイルはコミットしない）。
   ```
   NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
   ```
-- 本番のビルドでは、`NEXT_PUBLIC_API_MOCK=true` を付けたときだけモックを使う。
+- `npm run test:mock` でモックの動きを確かめられる（`scripts/mock-smoke.ts`）。
+
+### 本番にモックを入れない仕組み
+- 本番ビルド（`npm run build`）では、`next.config.ts` がモックを空の部品（`mock.disabled.ts`）に差し替える。
+- ビルドのあとに `scripts/check-no-mock.mjs` が自動で動き（`postbuild`）、成果物にモックの目印（`__PIATOMO_API_MOCK__`）があれば失敗する。
+- `NEXT_PUBLIC_API_MOCK=true` のまま本番ビルドすると失敗する。公開先を分けたステージングなど、どうしてもモック入りで本番モードのビルドが要るときだけ `NEXT_PUBLIC_MOCK_BUILD_ACK=staging-only` を付ける（本番には配備しない）。
+- この仕組みと動作確認のテストは、Shioriさんの #82 から取り込んだ。
+
+### シナリオでエラーの表示を試す
+URL に `?mock=…` を付けると、画面全体の状態を切り替えられる。ページを移っても続き、`?mock=normal` で戻る。
+| シナリオ | 動き |
+|---|---|
+| `normal` | ふつうの動き |
+| `emptyLessons` | 教材が1つもない |
+| `unauthorized` | すべて 401（ログインが切れた） |
+| `notFound` | 授業まわりがすべて 404 |
+| `pending` | 送信・解答・評価がずっと「処理中」のまま |
+| `networkError` | すべて通信エラー |
+
+ぴあ友の解答の結果だけを決めるときは `?mock_attempt=auto|correct|duplicate_form|blocked|unverified`。`auto` では、`\frac` を含む問題は「止まる（blocked）」、同じ形の問題の2回目は「回数に入らない（duplicate_form）」になる。
 
 ### 学習ルーム（/study/?session=1）をモックで試す
 送る文章に次の合図を入れると、エラーなどの動きを確かめられる。

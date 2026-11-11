@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "postbuild": "node scripts/check-no-mock.mjs out",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
+    "test:mock": "tsx scripts/mock-smoke.ts",
     "gen:api": "openapi-typescript ../../contracts/openapi.yaml -o src/lib/api/schema.d.ts"
   },
   "dependencies": {
@@ -23,6 +25,7 @@
     "eslint-config-next": "16.4.5",
     "openapi-typescript": "^7.13.0",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

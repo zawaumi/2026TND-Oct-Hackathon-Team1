@@ -2,13 +2,14 @@ import {
   ApiError,
   type ApiClient,
   type EvaluationReport,
+  type ExerciseAttempt,
+  type Profile,
   type Lesson,
   type MessageResponse,
   type Schemas,
   type SessionSummary,
   type TurnResult,
 } from "./types";
-import { mockClient } from "./mock";
 
 export * from "./types";
 
@@ -73,6 +74,11 @@ function query(params: Record<string, string | number | undefined>): string {
 
 const httpClient: ApiClient = {
   getMe: () => json(`/users/me/`),
+  completeOnboarding: async (body) => {
+    const res = await request(`/onboarding/complete/`, { method: "POST", body: JSON.stringify(body) });
+    return { created: res.status === 201, profile: (await res.json()) as Profile };
+  },
+  getPeer: () => json(`/peers/me/`),
   getLessons: async (q) => (await json<{ results: Lesson[] }>(`/lessons/${query(q)}`)).results,
   listSessions: async (limit) => (await json<{ results: SessionSummary[] }>(`/sessions/${query({ limit })}`)).results,
   createSession: (lessonIds) =>
@@ -90,16 +96,41 @@ const httpClient: ApiClient = {
     return { kind: "done", data: (await res.json()) as EvaluationReport };
   },
   finishSession: (id) => json(`/sessions/${id}/finish/`, { method: "POST" }),
+  createExercise: (id, body) => json(`/sessions/${id}/exercises/`, { method: "POST", body: JSON.stringify(body) }),
+  attemptExercise: async (exerciseId, requestId) => {
+    const res = await request(`/exercises/${exerciseId}/attempt/`, {
+      method: "POST",
+      body: JSON.stringify({ request_id: requestId }),
+    });
+    if (res.status === 202) return { kind: "pending", retryAfterMs: retryAfterMs(res) };
+    return { kind: "done", data: (await res.json()) as ExerciseAttempt };
+  },
 };
 
 /**
  * モックを使うかどうか。
  * - NEXT_PUBLIC_API_MOCK=true のとき
  * - 開発中（npm run dev）で NEXT_PUBLIC_API_BASE_URL が未設定のとき
- * 本番のビルドでは、明示しない限りモックを使わない。
+ *
+ * 条件は process.env の直接比較で書く。本番ビルドでは false に決まるので分岐ごと消え、
+ * モック（./mock）は成果物に入らない（scripts/check-no-mock.mjs がビルドのあとに確かめる）。
  */
 export const usingMock =
   process.env.NEXT_PUBLIC_API_MOCK === "true" ||
-  (process.env.NODE_ENV !== "production" && BASE_URL === "");
+  (process.env.NODE_ENV !== "production" && !process.env.NEXT_PUBLIC_API_BASE_URL);
 
-export const api: ApiClient = usingMock ? mockClient : httpClient;
+/** モックは使うときにだけ読み込む（本番の成果物に含めないため） */
+function lazyMock(): ApiClient {
+  let loaded: Promise<ApiClient> | null = null;
+  const load = () => (loaded ??= import("@/lib/api/mock").then((m) => m.mockClient));
+  return new Proxy({} as ApiClient, {
+    get: (_target, name: string | symbol) =>
+      // then は返さない（Promise に「待てる値」と誤解されないように）
+      typeof name !== "string" || name === "then"
+        ? undefined
+        : (...args: unknown[]) =>
+            load().then((client) => (client[name as keyof ApiClient] as (...a: unknown[]) => unknown)(...args)),
+  });
+}
+
+export const api: ApiClient = usingMock ? lazyMock() : httpClient;
