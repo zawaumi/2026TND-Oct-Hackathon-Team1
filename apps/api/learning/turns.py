@@ -198,9 +198,14 @@ def _process(session, turn, text, verdict, recent_context):
             "fallback_used": fallback_used,
         }
         LearningTurn.objects.filter(pk=turn.pk).update(status=LearningTurn.Status.DONE, result_cache=response)
-        TurnNote.objects.bulk_create(
-            [TurnNote(session=session, turn=turn, criterion=f["criterion"], note=f["note"]) for f in findings]
-        )
+        if verdict != "DATA_ONLY":
+            # 命令らしい文が混ざった説明の所見は、評価（#41）の根拠にしない（採点の誘導を避ける）
+            TurnNote.objects.bulk_create(
+                [
+                    TurnNote(session=session, turn=turn, criterion=f["criterion"], level=f.get("level"), note=f["note"])
+                    for f in findings
+                ]
+            )
     return response
 
 

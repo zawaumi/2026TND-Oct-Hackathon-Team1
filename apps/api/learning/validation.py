@@ -48,15 +48,25 @@ def validate(parsed, decision: Decision) -> tuple[dict | None, list[dict]]:
 
 
 def _valid_findings(findings) -> list[dict]:
-    """所見は観点のコードと100字以内の文だけ。会話の引用（「」）は入れない。合わないものは捨てる。"""
+    """所見は観点のコード・段階（1〜5、なければ None）・100字以内の文だけ。観点ごとに1件。
+
+    会話の引用（「」）は入れない。合わないものは捨てる。段階だけおかしいときは、文は残して段階を空にする。
+    """
     result = []
     if not isinstance(findings, list):
         return result
-    for f in findings[:3]:
+    seen = set()
+    for f in findings[:10]:
         if not isinstance(f, dict) or f.get("criterion") not in CRITERIA or not isinstance(f.get("note"), str):
+            continue
+        if f["criterion"] in seen:
             continue
         note = f["note"].strip()
         if not note or len(note) > MAX_NOTE or "「" in note:
             continue
-        result.append({"criterion": f["criterion"], "note": note})
+        level = f.get("level")
+        if not isinstance(level, int) or isinstance(level, bool) or not 1 <= level <= 5:
+            level = None
+        seen.add(f["criterion"])
+        result.append({"criterion": f["criterion"], "level": level, "note": note})
     return result

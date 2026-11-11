@@ -6,6 +6,7 @@
 """
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from lessons.models import Lesson
@@ -98,6 +99,8 @@ class TurnNote(models.Model):
     turn = models.ForeignKey(LearningTurn, on_delete=models.CASCADE, related_name="notes")
     criterion = models.CharField("観点", max_length=10, choices=Criterion.choices)
     note = models.CharField("所見", max_length=100)
+    # ルーブリックの段階（1〜5）の候補。Jev（#28）ができるまでは DeepSeek の所見に付けてもらう。なければ空
+    level = models.PositiveSmallIntegerField("段階", null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
