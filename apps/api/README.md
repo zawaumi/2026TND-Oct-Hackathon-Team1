@@ -57,3 +57,15 @@ python manage.py test accounts config lessons
 - 公開教材（`CURATED`）は所有者なし、私有（`PRIVATE`）は所有者が必須です（DB の制約）。
 - `Lesson.grade` は中学の学年（1〜3）で、高校の科目は空にします。`subject` は教科・科目のコード（例：`math`）です。
 - 教材データは管理画面（`/admin/`）からも入力できます。
+
+## PR のチェック（CI）
+
+`apps/api/**`・`contracts/**` を変えた PR と、`main` への push で `.github/workflows/api-ci.yml` が動きます。
+
+- `api`：PostgreSQL 15（CI 専用の DB と認証情報）を起動し、`manage.py check`、本番設定での `check --deploy`、マイグレーションの作り忘れの確認（`makemigrations --check`）、テストを実行します。
+- `contract`：`contracts/openapi.yaml` の構造と参照を検証します。
+- `container`：`apps/api/Dockerfile` からコンテナを作れるか確かめます。
+
+## コンテナ
+
+`apps/api/Dockerfile` は Cloud Run（#57）用です。本番設定（`config.settings.production`）で gunicorn を起動し、`PORT`（既定 8080）で待ち受けます。`DJANGO_SECRET_KEY`、`DJANGO_ALLOWED_HOSTS`、`POSTGRES_*` は実行時の環境変数で渡し、イメージには入れません。
