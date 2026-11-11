@@ -34,3 +34,24 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ---- 秘密情報（#9）: 追跡しない。例は .env.example だけ
+.env.*
+!.env.example
+# Firebase / Google Cloud のサービスアカウント鍵・認証情報
+*service-account*.json
+*serviceaccount*.json
+*-firebase-adminsdk-*.json
+firebase-adminsdk*.json
+*credentials*.json
+.firebase/
+# 秘密鍵・証明書
+*.key
+*.p12
+*.pfx
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+db.sqlite3

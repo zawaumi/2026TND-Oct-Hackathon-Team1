@@ -66,3 +66,15 @@ python manage.py test accounts config lessons peers
 - `GET /api/v1/peers/me/knowledge/?concept_ids=1,2`：本人のぴあ友の知識の状態。省略すると、見てよい概念（公開教材と本人の私有）すべて
 - 状態を変えるのは状態の遷移サービス（#21）だけです。`required_correct` は習得判定（#39）ができるまで既定値の2を返します。
 - ログインの確認（#11）ができるまでは、テストでは `force_authenticate` で本人として呼びます。
+
+## PR のチェック（CI）
+
+`apps/api/**`・`contracts/**` を変えた PR と、`main` への push で `.github/workflows/api-ci.yml` が動きます。
+
+- `api`：PostgreSQL 15（CI 専用の DB と認証情報）を起動し、`manage.py check`、本番設定での `check --deploy`、マイグレーションの作り忘れの確認（`makemigrations --check`）、テストを実行します。
+- `contract`：`contracts/openapi.yaml` の構造と参照を検証します。
+- `container`：`apps/api/Dockerfile` からコンテナを作れるか確かめます。
+
+## コンテナ
+
+`apps/api/Dockerfile` は Cloud Run（#57）用です。本番設定（`config.settings.production`）で gunicorn を起動し、`PORT`（既定 8080）で待ち受けます。`DJANGO_SECRET_KEY`、`DJANGO_ALLOWED_HOSTS`、`POSTGRES_*` は実行時の環境変数で渡し、イメージには入れません。
