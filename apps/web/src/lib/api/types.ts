@@ -12,6 +12,11 @@ export type KnowledgeChange = Schemas["KnowledgeChange"];
 export type Profile = Schemas["Profile"];
 export type SchoolLevel = Schemas["SchoolLevel"];
 export type SessionSummary = Schemas["SessionSummary"];
+export type EvaluationReport = Schemas["EvaluationReport"];
+export type EvaluationCriterion = Schemas["EvaluationCriterion"];
+
+/** 評価の取得結果。評価中（202）のときは pending */
+export type EvaluationResult = { kind: "done"; data: EvaluationReport } | { kind: "pending"; retryAfterMs: number };
 
 /** GET /lessons/ の絞り込み（ADR-031） */
 export type LessonQuery = {
@@ -49,5 +54,6 @@ export interface ApiClient {
   getKnowledgeGraph(lessonId?: number): Promise<{ nodes: ConceptNode[]; edges: ConceptEdge[] }>;
   postMessage(sessionId: number, body: Schemas["MessageRequest"]): Promise<TurnResult>;
   getTurn(sessionId: number, requestId: string): Promise<TurnResult>;
+  getEvaluation(sessionId: number): Promise<EvaluationResult>;
   finishSession(sessionId: number): Promise<{ session_id: number; status: "evaluation_pending" | "evaluation_complete" }>;
 }
