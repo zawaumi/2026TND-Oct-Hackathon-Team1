@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from .models import LearningSession
 from .services import SessionError, finish_session, start_session
+from .turns import TurnError, get_turn, submit_turn
 
 
 def session_json(s):
@@ -86,3 +87,42 @@ class SessionFinishView(APIView):
         session = finish_session(session)
         result = "evaluation_complete" if session.status == LearningSession.Status.FINISHED else "evaluation_pending"
         return Response({"session_id": session.id, "status": result}, status=status.HTTP_202_ACCEPTED)
+
+
+def _turn_result(outcome, request_id):
+    if outcome.pending:
+        return Response({"status": "processing", "request_id": str(request_id)}, status=status.HTTP_202_ACCEPTED)
+    return Response(outcome.response)
+
+
+class MessageView(APIView):
+    """POST /api/v1/sessions/{id}/messages/ 説明を送り、検証済みのぴあ友の応答を受け取る（#32）"""
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, session_id):
+        session = own_session(request, session_id)
+        if session is None:
+            return _not_found()
+        data = request.data if isinstance(request.data, dict) else {}
+        try:
+            outcome = submit_turn(session, data.get("request_id"), data.get("content"), data.get("recent_context"))
+        except TurnError as e:
+            return Response({"code": e.code, "message": e.message}, status=e.status)
+        return _turn_result(outcome, data.get("request_id"))
+
+
+class TurnView(APIView):
+    """GET /api/v1/sessions/{id}/turns/{request_id}/ 送信の処理の状態"""
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, session_id, request_id):
+        session = own_session(request, session_id)
+        if session is None:
+            return _not_found()
+        try:
+            outcome = get_turn(session, request_id)
+        except TurnError as e:
+            return Response({"code": e.code, "message": e.message}, status=e.status)
+        return _turn_result(outcome, request_id)
