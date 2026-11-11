@@ -41,7 +41,7 @@ cd apps/api
 source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
-python manage.py test accounts config lessons peers
+python manage.py test
 ```
 
 `POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD`、`POSTGRES_HOST`、`POSTGRES_PORT` を API プロセスに渡します。ホストからは `POSTGRES_HOST=127.0.0.1`、Compose 内の別サービスからは `db` を使います。ホスト側ポートが使用中なら `.env` の `POSTGRES_PORT` を変更してください。既存ボリュームの DB 名・ユーザー・パスワードは `.env` の変更だけでは更新されません。
@@ -78,6 +78,21 @@ python manage.py test accounts config lessons peers
 ## コンテナ
 
 `apps/api/Dockerfile` は Cloud Run（#57）用です。本番設定（`config.settings.production`）で gunicorn を起動し、`PORT`（既定 8080）で待ち受けます。`DJANGO_SECRET_KEY`、`DJANGO_ALLOWED_HOSTS`、`POSTGRES_*` は実行時の環境変数で渡し、イメージには入れません。
+
+## 教材の取得（#18）
+
+- `GET /api/v1/lessons/?school_level=middle&grade=1&subject=math`：公開中の教材。絞り込みは小単元に効き、その上の単元・領域も一緒に返します（画面が木を組み立てるため）。下書き（`status=draft`）と他人の私有教材は返しません。
+- `GET /api/v1/lessons/{id}/`：1件。見てよくない教材は 404。
+- `GET /api/v1/knowledge-graph/?lesson_id=`：概念（ノード）と前提関係（辺）。状態は本人のぴあ友のもの。単元を渡すと、その下の小単元の概念をまとめて返します。前提関係は #16（`ConceptPrerequisite`）ができるまで空です。
+
+## 授業（#19、`learning` アプリ）
+
+Django 標準の `sessions` と名前が重ならないよう、授業のアプリは `learning` にしました。
+
+- `POST /api/v1/sessions/`：`{"mode":"preset","lesson_ids":[...]}` で授業を始めます（201）。単元を選ぶと小単元まで展開し、重複は除きます。選べるのは小単元10個まで。
+- `GET /api/v1/sessions/?limit=`：本人の授業（新しい順）。点数は評価（#42）ができるまで `null`。
+- `GET /api/v1/sessions/{id}/`：本人の授業。他人の授業は 404。
+- `POST /api/v1/sessions/{id}/finish/`：授業を終えて評価待ちにします（202）。2回呼んでも変わりません。
 
 ## 外部AI：DeepSeek（#30・#27）
 
