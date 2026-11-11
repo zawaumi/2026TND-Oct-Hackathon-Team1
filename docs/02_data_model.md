@@ -12,7 +12,7 @@
 | peers | PeerKnowledge | peer, concept, status, reset_epoch, mastered_at | (peer, concept)一意 |
 | lessons | CurriculumRevision | id, code, name, issued_year, source_url | 告示版ごとに管理 |
 | lessons | CurriculumItem | id, revision, parent, official_code, title, type | (revision, official_code)可能な範囲で一意 |
-| lessons | Lesson | id, parent, curriculum_item, title, owner, status, mode, sort_order | 階層の循環禁止 |
+| lessons | Lesson | id, parent, curriculum_item, title, school_level, grade, subject, scope, owner, status, mode, sort_order | 階層の循環禁止。`grade`は中学の学年（高校の科目はNULL、ADR-031）。CURATEDは所有者なし、PRIVATEは所有者が必須 |
 | lessons | Concept | id, code, title, description, scope, owner, difficulty | CURATEDは全体、PRIVATEは所有者を必須 |
 | lessons | LessonConcept | lesson, concept, sort_order | (lesson, concept)一意 |
 | lessons | ConceptPrerequisite | concept, prerequisite | 自己参照/循環禁止、同一エッジ一意 |
