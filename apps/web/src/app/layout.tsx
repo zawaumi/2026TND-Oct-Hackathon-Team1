@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Noto_Sans_JP } from "next/font/google";
+import { AuthGate } from "@/lib/auth/AuthGate";
+import { AuthProvider } from "@/lib/auth/AuthProvider";
 import "./globals.css";
 
 // 本文の書体（docs/04 の 1.3）
@@ -21,7 +23,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="ja"
       className={`${notoSansJp.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {/* ログイン（#10）：ログインしていないと使えない画面はホームのログイン画面へ */}
+        <AuthProvider>
+          <AuthGate>{children}</AuthGate>
+        </AuthProvider>
+      </body>
     </html>
   );
 }
