@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# MathLive のフォント（npm run dev・build の前にコピーされる）
+/public/mathlive/
