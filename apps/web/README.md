@@ -55,6 +55,15 @@ URL に `?mock=…` を付けると、画面全体の状態を切り替えられ
 | `#neterr` | 1回目だけ通信エラー。「もう一度送る」で同じ送信IDのまま再送する |
 | `#mastered` | 「移項」が習得済みになる（帯とアバターの確認用） |
 
+### 「問題を出す」（/study/?session=1 で「問題を出す」を選ぶ）
+- 数式は MathLive（`mathlive`）で入力する。ブラウザだけで動くため、**「問題を出す」を初めて開いたときに読み込む**（`src/components/study/MathInput.tsx`）。フォントは `public/mathlive/fonts` に置く。`npm run dev`・`npm run build` の前に、`scripts/copy-mathlive-assets.mjs` が自動でコピーする（コピーしたものは Git に入れない）。
+- 画面のキーボードは出さない（会話が隠れるため）。記号のキー（x ＋ － × ÷ ＝ 分数 かっこ）は画面側で用意している。数式の入力欄が読み込めないとき、または「文字で入力する」を押したときは、ふつうの文字入力（例：`x+3=7`）に切り替わる。読み上げ用の言葉は、入力した式の下に出る。
+- 送る前の形式チェックは `src/lib/mathInput.ts`。決まった記号以外（`\href` など）、空いている部分、かっこの数のずれ、長すぎる式は送らない。**一次方程式かどうかの判定はしない**（API が VERIFIED・PROVISIONAL・UNSUPPORTED を返す）。LaTeX は画面で評価せず、文字として出す。API が返す式（`steps[].expr`）も、文字に直して出すだけで、HTML にはしない。
+- 流れ：式を入力 → 形式チェック → `POST /sessions/{id}/exercises/` → VERIFIED と PROVISIONAL は `POST /exercises/{id}/attempt/` で解答を取る（処理中の 202 は同じ `request_id` で取り直す）。UNSUPPORTED は理由と入力し直しの案内を出し、式は消さない。通信に失敗したら「もう一度」で、**同じ `request_id`** で再送する。送信中・解答待ちはボタンを押せなくし、ぴあ友を「考え中」にする。
+- 結果の文言は `src/lib/exercise.ts`（docs/04 の 5.4）。`npm run test:math` で、形式チェックと文言を確かめられる。
+- 対象の概念の初期値は「いま教えている概念」。選び直せる。
+- モックで試す：`x+3=7`（対応）、`x^2=4`（UNSUPPORTED）、分数キーで `x/2=3`（止まる）。1回目の正解のあと、同じ形（`x+5=9`）は「前と同じ形」になる。`?mock=networkError` は授業ごと読み込めなくなるので、通信失敗は、授業を開いたあとに、開発者ツールのコンソールで `sessionStorage.setItem("piatomo.mock.scenario","networkError")` を実行して試す（`normal` で戻す）。
+
 ### 学習レポート（/report/?session=...）をモックで試す
 - 開くと、はじめに「評価中…」が出て、少したつとレポートが出る。
 - 学習ルームから「授業を終える」で来ると、その授業の会話（このタブのメモリだけにある）から「ぴあ友がつまずいたところ」が出る。直接開いたときや再読み込みしたあとは出ない。

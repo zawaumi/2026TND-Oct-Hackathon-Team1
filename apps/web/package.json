@@ -3,16 +3,20 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/copy-mathlive-assets.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/copy-mathlive-assets.mjs",
     "build": "next build",
     "postbuild": "node scripts/check-no-mock.mjs out",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test:mock": "tsx scripts/mock-smoke.ts",
-    "gen:api": "openapi-typescript ../../contracts/openapi.yaml -o src/lib/api/schema.d.ts"
+    "gen:api": "openapi-typescript ../../contracts/openapi.yaml -o src/lib/api/schema.d.ts",
+    "test:math": "tsx scripts/math-input-test.ts"
   },
   "dependencies": {
     "firebase": "^12.19.0",
+    "mathlive": "^0.111.4",
     "next": "16.4.5",
     "react": "19.3.0",
     "react-dom": "19.3.0"

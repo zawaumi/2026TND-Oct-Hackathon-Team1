@@ -6,10 +6,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PeerEmotion } from "@/components/PeerAvatar";
 import { STATUS_LABEL } from "@/components/KnowledgeState";
 import { Logo } from "@/components/Logo";
-import { api, ApiError, type Lesson, type MessageResponse, type PeerKnowledge } from "@/lib/api/client";
+import { api, ApiError, type ExerciseAttempt, type KnowledgeChange, type Lesson, type MessageResponse, type PeerKnowledge } from "@/lib/api/client";
 import { saveConversation, type ConversationLine } from "@/lib/conversationMemory";
+import { newRequestId } from "@/lib/requestId";
 import { understandingPercent } from "@/lib/understanding";
 import { ChatLog, type ChatItem } from "./ChatLog";
+import { ExercisePanel, type ExercisePhase } from "./ExercisePanel";
 import { FinishDialog } from "./FinishDialog";
 import {
   BackIcon,
@@ -32,15 +34,6 @@ type Loaded = {
 
 const MAX_POLLS = 20;
 const RECENT_CONTEXT = 6;
-
-function newRequestId(): string {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
-  // 古いブラウザ向けの代わり（UUID v4 の形）
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0;
-    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
-  });
-}
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -69,10 +62,15 @@ export function StudyRoom() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
+  // 「問題を出す」：出題中・ぴあ友が解いている間は、入力欄とボタンを押せなくする（docs/04 の 5.4）
+  const [exercisePhase, setExercisePhase] = useState<ExercisePhase>(null);
+  // 「問題を出す」の入力欄は、初めて開いたときに作り、そのあとは残す（入力中の式を消さない。数式の部品の読み込みも1回で済む）
+  const [exerciseOpened, setExerciseOpened] = useState(false);
 
   const chatRef = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
   const seenTurns = useRef(new Set<number>());
+  const seenAttempts = useRef(new Set<number>());
   const conceptsRef = useRef<ConceptView[]>([]);
   useEffect(() => {
     conceptsRef.current = concepts;
@@ -161,62 +159,117 @@ export function StudyRoom() {
     if (el && nearBottom.current) el.scrollTop = el.scrollHeight;
   }, [items, sending]);
 
-  /* ───── 応答を画面に反映 ───── */
-  const applyResponse = useCallback((res: MessageResponse) => {
-    // 同じ応答を再受信しても、成功の演出や表示をくり返さない（docs/04 の 5.5）
-    if (seenTurns.current.has(res.turn_id)) return;
-    seenTurns.current.add(res.turn_id);
-
+  /* ───── 知識の変化を画面に反映（教えた応答と、ぴあ友の解答の両方で使う） ───── */
+  const reflectChanges = useCallback((changes: KnowledgeChange[], keyBase: string) => {
     const label = (id: number) => conceptsRef.current.find((c) => c.id === id)?.label ?? `概念 ${id}`;
-    const peer = res.peer_response;
     const extra: ChatItem[] = [];
     let mastered: string | null = null;
 
-    for (const ch of res.knowledge_changes) {
+    for (const ch of changes) {
       if (ch.new_status === "MASTERED") {
         mastered = label(ch.concept_id);
-        extra.push({ kind: "mastery", key: `m${res.turn_id}-${ch.concept_id}`, text: `ぴあ友が「${mastered}」を習得しました！` });
+        extra.push({ kind: "mastery", key: `m${keyBase}-${ch.concept_id}`, text: `ぴあ友が「${mastered}」を習得しました！` });
       } else {
         extra.push({
           kind: "notice",
-          key: `n${res.turn_id}-${ch.concept_id}`,
+          key: `n${keyBase}-${ch.concept_id}`,
           text: `${label(ch.concept_id)}：${STATUS_LABEL[ch.new_status]}`,
         });
       }
     }
-
-    setItems((prev) => [
-      ...prev,
-      { kind: "peer", key: `p${res.turn_id}`, text: peer.message, action: peer.action },
-      ...extra,
-    ]);
-
-    if (res.knowledge_changes.length > 0) {
+    if (changes.length > 0) {
       setConcepts((prev) =>
         prev.map((c) => {
-          const ch = res.knowledge_changes.find((x) => x.concept_id === c.id);
+          const ch = changes.find((x) => x.concept_id === c.id);
           return ch ? { ...c, status: ch.new_status } : c;
         }),
       );
-      // 「習得まであと〇問」のために、検証済みの回数も取り直す
-      api
-        .getPeerKnowledge()
-        .then((k) => setConcepts((prev) => mergeKnowledge(prev, k.items)))
-        .catch(() => {});
     }
+    return { extra, mastered };
+  }, []);
 
-    if (peer.concept_id != null && conceptsRef.current.some((c) => c.id === peer.concept_id)) {
-      setCurrentId(peer.concept_id);
-    }
+  /* ───── 応答を画面に反映 ───── */
+  const applyResponse = useCallback(
+    (res: MessageResponse) => {
+      // 同じ応答を再受信しても、成功の演出や表示をくり返さない（docs/04 の 5.5）
+      if (seenTurns.current.has(res.turn_id)) return;
+      seenTurns.current.add(res.turn_id);
 
-    // mastery_success は、DRFが習得済みに更新したときだけ（docs/04 の 5.5）
-    if (mastered) {
-      setMasteredLabel(mastered);
-      setEmotion("mastery_success");
-    } else {
-      setMasteredLabel(null);
-      setEmotion(peer.emotion === "mastery_success" ? "practice_success" : peer.emotion);
-    }
+      const peer = res.peer_response;
+      const { extra, mastered } = reflectChanges(res.knowledge_changes, String(res.turn_id));
+
+      setItems((prev) => [
+        ...prev,
+        { kind: "peer", key: `p${res.turn_id}`, text: peer.message, action: peer.action },
+        ...extra,
+      ]);
+
+      if (res.knowledge_changes.length > 0) {
+        // 「習得まであと〇問」のために、検証済みの回数も取り直す
+        api
+          .getPeerKnowledge()
+          .then((k) => setConcepts((prev) => mergeKnowledge(prev, k.items)))
+          .catch(() => {});
+      }
+
+      if (peer.concept_id != null && conceptsRef.current.some((c) => c.id === peer.concept_id)) {
+        setCurrentId(peer.concept_id);
+      }
+
+      // mastery_success は、DRFが習得済みに更新したときだけ（docs/04 の 5.5）
+      if (mastered) {
+        setMasteredLabel(mastered);
+        setEmotion("mastery_success");
+      } else {
+        setMasteredLabel(null);
+        setEmotion(peer.emotion === "mastery_success" ? "practice_success" : peer.emotion);
+      }
+    },
+    [reflectChanges],
+  );
+
+  /* ───── 「問題を出す」 ───── */
+  const onProblem = useCallback((item: Extract<ChatItem, { kind: "problem" }>) => {
+    nearBottom.current = true;
+    setItems((prev) => [...prev, item]);
+  }, []);
+
+  /** ぴあ友の解答が届いた。会話に出し、知識（習得まであと〇問）を取り直す */
+  const onSolved = useCallback(
+    async (attempt: ExerciseAttempt, targetId: number) => {
+      // 同じ解答を再受信しても、表示や成功の演出をくり返さない（docs/04 の 5.5）
+      if (seenAttempts.current.has(attempt.id)) return;
+      seenAttempts.current.add(attempt.id);
+
+      const { extra, mastered } = reflectChanges(attempt.knowledge_changes ?? [], `a${attempt.id}`);
+      let remaining: number | null = null;
+      try {
+        const k = await api.getPeerKnowledge();
+        setConcepts((prev) => mergeKnowledge(prev, k.items));
+        const it = k.items.find((x) => x.concept_id === targetId);
+        if (it) remaining = Math.max(it.required_correct - it.verified_correct, 0);
+      } catch {
+        // 取り直せなくても、解答は出す（「あと〇問」は出さない）
+      }
+
+      nearBottom.current = true;
+      setItems((prev) => [...prev, { kind: "solution", key: `s${attempt.id}`, attempt, remaining }, ...extra]);
+
+      // mastery_success は、DRFが習得済みに更新したときだけ（docs/04 の 5.5）
+      if (mastered) {
+        setMasteredLabel(mastered);
+        setEmotion("mastery_success");
+      } else {
+        setMasteredLabel(null);
+        setEmotion(attempt.result === "correct" ? "practice_success" : attempt.result === "blocked" ? "question" : "idle");
+      }
+    },
+    [reflectChanges],
+  );
+
+  const changeMode = useCallback((m: Mode) => {
+    if (m === "exercise") setExerciseOpened(true);
+    setMode(m);
   }, []);
 
   /* ───── 送信 ───── */
@@ -311,7 +364,10 @@ export function StudyRoom() {
   const percent = useMemo(() => understandingPercent(concepts.map((c) => c.status)), [concepts]);
   const hasFailed = items.some((it) => it.kind === "user" && it.state === "failed");
   // 入力し始めたら「聞いています」（質問中や成功の表情は消さない）
-  const shownEmotion: PeerEmotion = sending ? "thinking" : emotion === "idle" && text.length > 0 ? "listening" : emotion;
+  const solving = exercisePhase === "solving";
+  const busy = sending || exercisePhase !== null;
+  const shownEmotion: PeerEmotion =
+    sending || solving ? "thinking" : emotion === "idle" && text.length > 0 ? "listening" : emotion;
 
   const validId = Number.isInteger(sessionId) && sessionId > 0;
   if (!validId || loadError) {
@@ -326,13 +382,6 @@ export function StudyRoom() {
   const lessonTitles = loaded.lessons.map((l) => l.title).join(" ／ ");
   // 教科はMVPでは数学だけ（ADR-028）
   const subjectGrade = grade ? `中${grade}数学` : "数学";
-
-  const inputArea =
-    mode === "teach" ? (
-      <Composer value={text} onChange={setText} onSend={send} disabled={sending || hasFailed} />
-    ) : (
-      <ExercisePlaceholder />
-    );
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden">
@@ -394,16 +443,17 @@ export function StudyRoom() {
         {/* 右列（PC）／会話と入力（スマホ） */}
         <section className="-mx-3 -mb-3 flex min-h-0 flex-1 flex-col lg:m-0 lg:rounded-card lg:bg-card" aria-label="授業">
           <div className="hidden justify-end px-5 pt-3.5 pb-2 lg:flex">
-            <ModeTabs mode={mode} onChange={setMode} disabled={sending} />
+            <ModeTabs mode={mode} onChange={changeMode} disabled={busy} />
           </div>
 
           <ChatLog
             ref={chatRef}
             items={items}
-            thinking={sending}
+            thinking={sending || solving}
             onRetry={retry}
             retryDisabled={sending}
             onScroll={onScroll}
+            onTeach={() => changeMode("teach")}
           />
 
           <div className="shrink-0 border-t border-line bg-card px-3 pt-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:rounded-b-card lg:px-5 lg:py-4">
@@ -412,24 +462,28 @@ export function StudyRoom() {
                 {notice}
               </p>
             )}
-            {inputArea}
+            {mode === "teach" && <Composer value={text} onChange={setText} onSend={send} disabled={sending || hasFailed} />}
+            {exerciseOpened && (
+              <div className={mode === "exercise" ? "" : "hidden"}>
+                <ExercisePanel
+                  sessionId={loaded.sessionId}
+                  concepts={concepts}
+                  currentId={currentId}
+                  disabled={sending}
+                  onPhase={setExercisePhase}
+                  onProblem={onProblem}
+                  onSolved={onSolved}
+                />
+              </div>
+            )}
             <div className="mt-3 lg:hidden">
-              <ModeButtons mode={mode} onChange={setMode} disabled={sending} />
+              <ModeButtons mode={mode} onChange={changeMode} disabled={busy} />
             </div>
           </div>
         </section>
       </main>
 
       <FinishDialog open={finishOpen} onClose={() => setFinishOpen(false)} onConfirm={finish} />
-    </div>
-  );
-}
-
-/** 「問題を出す」の入力欄は #47 で作る。ここでは場所だけ用意する */
-function ExercisePlaceholder() {
-  return (
-    <div className="rounded-2xl border border-dashed border-outline bg-soft px-4 py-4 text-center text-[14px] text-sub">
-      「問題を出す」は準備中です。いまは「教える」で説明してください。
     </div>
   );
 }
