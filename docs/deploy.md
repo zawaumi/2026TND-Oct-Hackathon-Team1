@@ -1,4 +1,4 @@
-# 本番公開の手順（#56・#57）
+# 本番公開の手順
 
 画面（Next.js の静的出力）は Firebase Hosting、API（Django）は Cloud Run、DB は Cloud SQL（PostgreSQL 15）に置きます。
 Hosting が `/api/**` を Cloud Run へ転送するので、画面と API は同じ場所（`https://tnd2026-oct-hackathon.web.app`）に見えます。CORS の設定は要りません。
@@ -119,7 +119,7 @@ gcloud run deploy $SERVICE --source apps/api --region $REGION --service-account 
   --set-env-vars $ENVS --set-secrets $SECRETS
 ```
 
-- `--allow-unauthenticated`：だれでも呼べるようにします。ログインの確認は API 自身が Firebase の ID トークンで行います（#11）。
+- `--allow-unauthenticated`：だれでも呼べるようにします。ログインの確認は API 自身が Firebase の ID トークンで行います（`apps/api/accounts/authentication.py`）。
 - 最小インスタンスは 0 です（使わないときは費用がかからない代わりに、しばらく使っていないと最初の1回が数秒遅い）。発表の直前に `gcloud run services update $SERVICE --min-instances 1` にし、終わったら 0 に戻すと安心です。
 
 ## 6. DB を最新にする（マイグレーション。API を載せるたびに）
@@ -140,7 +140,7 @@ gcloud run jobs deploy piatomo-migrate --image $IMAGE --region $REGION --service
 gcloud run jobs execute piatomo-migrate --region $REGION --wait
 ```
 
-教材データ（#17）を入れるときも、このジョブの引数を変えて実行します（例：`--args "manage.py,loaddata,<ファイル>"`。コマンドは #17 の方法に合わせる）。
+教材データを入れるときも、このジョブの引数を変えて実行します（例：`--args "manage.py,loaddata,<ファイル>"`。コマンドは教材データの入れ方に合わせる）。
 
 ```powershell
 # gcloud run jobs execute piatomo-migrate --region $REGION --wait --args "manage.py,<コマンド>"
@@ -175,8 +175,8 @@ firebase deploy --only hosting
 `https://tnd2026-oct-hackathon.web.app` を開き、次の順に確かめます。
 
 1. Google でログインできる（Firebase の Authentication で Google が有効になっていること）
-2. 初回設定（ニックネーム・学年・同意）を終えるとホームに進む（#43）
-3. 学習内容を選んで授業を始められる（教材データ #17 が入っていること）
+2. 初回設定（ニックネーム・学年・同意）を終えるとホームに進む
+3. 学習内容を選んで授業を始められる（教材データが入っていること）
 4. 説明を2〜3回送ると、ぴあ友が質問を返す（本物の DeepSeek）
 5. 「授業を終える」で学習レポートが出る（点数・3観点・良かったところ・習得の変化・次の学習の候補）
 
@@ -197,7 +197,7 @@ gcloud logging read "resource.type=cloud_run_revision AND resource.labels.servic
 | DB につながらない | `--add-cloudsql-instances` と `POSTGRES_HOST=/cloudsql/<接続名>` が合っているか、サービスアカウントに `cloudsql.client` があるか |
 | `firebase deploy` で Cloud Run が見つからない | 手順5の API が、同じプロジェクト・リージョン（asia-northeast1）・名前（piatomo-api）で載っているか |
 | 画面が「通信できませんでした」 | ビルドのときに `NEXT_PUBLIC_API_BASE_URL` が入っていた。手順8の1を確認してビルドし直す |
-| ログイン後に「初回設定をしてください」で止まる | 初回設定の画面（#43）がまだ入っていない |
+| ログイン後に「初回設定をしてください」で止まる | 初回設定の画面がまだ入っていない |
 
 ## ハッカソンのあとに費用を止める
 

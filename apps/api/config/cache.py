@@ -1,4 +1,4 @@
-"""API の応答を、途中の CDN やブラウザにキャッシュさせない（#56）。
+"""API の応答を、途中の CDN やブラウザにキャッシュさせない。
 
 本番は Firebase Hosting の CDN を通る。本人だけの情報（プロフィール・授業・レポート）が
 ほかの人に返されないよう、/api/ の応答には Cache-Control: private, no-store を付ける。
