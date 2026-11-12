@@ -43,6 +43,7 @@ URL に `?mock=…` を付けると、画面全体の状態を切り替えられ
 | `notFound` | 授業まわりがすべて 404 |
 | `pending` | 送信・解答・評価がずっと「処理中」のまま |
 | `networkError` | すべて通信エラー |
+| `newUser` | 初回設定がまだの人。初回設定以外のAPIはすべて 403 `ONBOARDING_REQUIRED`。登録できたら ふつうに戻る（再読み込みでまた未登録から） |
 
 ぴあ友の解答の結果だけを決めるときは `?mock_attempt=auto|correct|duplicate_form|blocked|unverified`。`auto` では、`\frac` を含む問題は「止まる（blocked）」、同じ形の問題の2回目は「回数に入らない（duplicate_form）」になる。
 
@@ -67,6 +68,12 @@ URL に `?mock=…` を付けると、画面全体の状態を切り替えられ
 - API を呼ぶときは、Firebase の ID トークンを `Authorization: Bearer …` で付ける（DRF 側の確認は #11）。
 - モックのときはログインした「ふり」をする（ホームの「ログアウト」でログイン画面を見られる）。モックのまま本物の Google ログインを試すときは、`apps/web/.env.local` に `NEXT_PUBLIC_AUTH=firebase` を書く。
 - Firebase コンソールで、Authentication の「ログイン方法」で Google を有効にし、「承認済みドメイン」に公開先のドメイン（Hosting のドメインなど）を入れておく。`localhost` は最初から入っている。
+
+## 初回登録（#43）
+- 初回設定の画面は `/` に出る（docs/04 の 2・9）。ログイン済みで未登録のとき、画面（`src/components/auth/OnboardingScreen.tsx`）がニックネーム・校種・学年とデータの扱いの説明、同意のチェックを出す。同意のチェックがなければ「はじめる」は押せない。
+- 未登録かどうかは、API が返す 403 `ONBOARDING_REQUIRED` で分かる。どの API でも 403 `ONBOARDING_REQUIRED` を受けたら、`client.ts` が `setOnboardingRequiredHandler` で登録された処理を呼び、`useAuth()` の `onboardingRequired` が true になる。ホーム以外の画面では、`AuthGate` が `/?next=元の画面` へ移し、登録のあとに元の画面へ戻る。
+- 登録は `POST /onboarding/complete/`。送る値は `nickname`・`school_level`・`grade`・`terms_version`・`privacy_notice_version`・`consent_confirmed: true`（これ以外は送らない）。版の値は `src/lib/onboarding.ts`。**利用規約・データの扱いの正式な文面は法務の確認（#65）のあとに決める。それまで版は仮の `draft-1`。**
+- モックで試す: `?mock=newUser` を付けて `/` を開く（ログインはモックなので、すぐ初回設定が出る）。ニックネームに `#neterr` と入れると、1回目だけ通信エラーになる。
 
 ## 注意
 - 静的出力のため、SSR・Server Actions・動的ルート（`/study/[id]` など）は使わない。

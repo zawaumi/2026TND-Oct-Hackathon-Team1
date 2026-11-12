@@ -1,18 +1,25 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { setIdTokenProvider, setUnauthorizedHandler, usingMock } from "@/lib/api/client";
+import { setIdTokenProvider, setOnboardingRequiredHandler, setUnauthorizedHandler, usingMock } from "@/lib/api/client";
 import { firebaseConfig } from "./firebase";
 
 export type AuthUser = { uid: string; displayName: string | null };
 
-type AuthState = {
+type BaseAuthState = {
   /** 読み込み中は undefined、ログインしていなければ null */
   user: AuthUser | null | undefined;
   signIn: () => Promise<void>;
   signOut: () => Promise<void>;
   /** 401 を受けてログイン画面へ戻されたとき true */
   expired: boolean;
+};
+
+type AuthState = BaseAuthState & {
+  /** ログインはしているが初回設定がまだ（API が 403 ONBOARDING_REQUIRED を返した）とき true */
+  onboardingRequired: boolean;
+  /** 初回設定が済んだことを伝える */
+  onboardingDone: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -34,7 +41,7 @@ export function safeNext(next: string | null): string | null {
 const MOCK_KEY = "piatomo.mock.signedOut";
 const MOCK_USER: AuthUser = { uid: "mock-user", displayName: "モックユーザー" };
 
-function useMockAuth(): AuthState {
+function useMockAuth(): BaseAuthState {
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
   const [expired, setExpired] = useState(false);
   useEffect(() => {
@@ -74,7 +81,7 @@ function useMockAuth(): AuthState {
 type FirebaseAuthModule = typeof import("firebase/auth");
 type Ready = { auth: import("firebase/auth").Auth; mod: FirebaseAuthModule };
 
-function useFirebaseAuth(): AuthState {
+function useFirebaseAuth(): BaseAuthState {
   const [user, setUser] = useState<AuthUser | null | undefined>(undefined);
   const [expired, setExpired] = useState(false);
   // 読み込みが済んだ Firebase。ログインのボタンを押したらすぐポップアップを開けるよう、先に用意しておく
@@ -128,6 +135,22 @@ function useFirebaseAuth(): AuthState {
 const useAuthImpl = usingMock && process.env.NEXT_PUBLIC_AUTH !== "firebase" ? useMockAuth : useFirebaseAuth;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const state = useAuthImpl();
+  const base = useAuthImpl();
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  useEffect(() => {
+    setOnboardingRequiredHandler(() => setNeedsOnboarding(true));
+  }, []);
+  const baseSignOut = base.signOut;
+  const signOut = useCallback(async () => {
+    setNeedsOnboarding(false);
+    await baseSignOut();
+  }, [baseSignOut]);
+  const onboardingDone = useCallback(() => setNeedsOnboarding(false), []);
+  const state: AuthState = {
+    ...base,
+    signOut,
+    onboardingRequired: base.user != null && needsOnboarding,
+    onboardingDone,
+  };
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }

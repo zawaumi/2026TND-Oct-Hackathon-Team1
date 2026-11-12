@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { mockClient as api, setMockScenario } from "../src/lib/api/mock";
-import { ApiError, isNetworkError, isNotFound, isUnauthorized } from "../src/lib/api/types";
+import { ApiError, isNetworkError, isNotFound, isOnboardingRequired, isUnauthorized } from "../src/lib/api/types";
 
 const RID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
@@ -87,6 +87,31 @@ async function main() {
   assert.equal((await api.postMessage(s.id, { request_id: RID(20), content: "a" })).kind, "pending");
   setMockScenario("networkError");
   await assert.rejects(api.getLessons({}), isNetworkError);
+
+  // 初回設定がまだの人（newUser）：初回設定以外は 403 ONBOARDING_REQUIRED。同意なしでは登録できない
+  setMockScenario("newUser");
+  await assert.rejects(api.getMe(), isOnboardingRequired);
+  await assert.rejects(api.getLessons({}), isOnboardingRequired);
+  const signup = {
+    nickname: "あお",
+    school_level: "middle" as const,
+    grade: 1,
+    terms_version: "draft-1",
+    privacy_notice_version: "draft-1",
+    consent_confirmed: true as const,
+  };
+  await assert.rejects(
+    api.completeOnboarding({ ...signup, consent_confirmed: false as never }),
+    (e) => e instanceof ApiError && e.status === 400 && e.code === "CONSENT_REQUIRED",
+  );
+  await assert.rejects(api.getMe(), isOnboardingRequired); // 同意なしの登録は成功していない
+  const first = await api.completeOnboarding(signup);
+  assert.equal(first.created, true);
+  assert.equal((await api.getMe()).nickname, "あお"); // 登録後は ふつうに使える
+  assert.equal((await api.completeOnboarding(signup)).created, false); // 再送は登録済み（200）
+  // #neterr：1回目だけ通信エラー（同じ入力でもう一度押せば成功する）
+  await assert.rejects(api.completeOnboarding({ ...signup, nickname: "#neterr" }), isNetworkError);
+  assert.equal((await api.completeOnboarding({ ...signup, nickname: "#neterr" })).profile.nickname, "#neterr");
   setMockScenario(null);
 
   console.log("SMOKE_OK");
