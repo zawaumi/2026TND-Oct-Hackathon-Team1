@@ -1,103 +1,82 @@
-ぴあとも（Piatomo）
-中学生・高校生が、同年代のAI生徒「ぴあ友」に勉強を教え、教えることで自分の理解を深める学習アプリです。
-TND 秋のハッカソン2026・チーム1。
-仕様の正本は `docs/`、API契約は `contracts/openapi.yaml`（1.1.0-draft）です。用語は `docs/glossary.md` に従います。
-```
-apps/web/    Web（Next.js + TypeScript + Tailwind。静的出力）
-apps/api/    API（Django REST Framework）
-contracts/   API契約（OpenAPI）
-docs/        仕様書
-compose.yaml ローカルDB（PostgreSQL）
-```
-1. 前提ソフト
-ソフト	版	用途
-Git	最近のもの	
-Python	3.12	API
-Node.js	`apps/web/.nvmrc` の版（26）。nvm なら `cd apps/web && nvm install && nvm use`	Web
-Docker（Compose v2）	最近のもの	ローカルのPostgreSQL（使わなくてもAPIは起動できる。手順3参照）
-2. 環境変数
-```sh
-cp .env.example .env
-```
-`.env` を開いて、`POSTGRES_PASSWORD` を自分用の値に変えます（ローカル専用なので何でもよい）。
-`.env` は Gitに入りません（`.gitignore` で除外済み）。コミットしないでください。
-`.env.example` には架空の値だけを置きます。本物のパスワード・APIキー・Firebaseのサービスアカウント鍵（`*.json`）は、どのファイルにも書かず、PRにも含めません。
-Webの環境変数（`NEXT_PUBLIC_*`）はブラウザに公開されるので、秘密の値を入れません。
-変数	使う場所	内容
-`POSTGRES_DB` `POSTGRES_USER` `POSTGRES_PASSWORD` `POSTGRES_HOST` `POSTGRES_PORT`	Docker・API	DB接続。5つすべて設定するか、すべて未設定にする（一部だけだとAPIがエラーになる）
-`DJANGO_SECRET_KEY`	API	未設定なら起動のたびに自動生成。本番では必須
-`DJANGO_SETTINGS_MODULE` `DJANGO_ALLOWED_HOSTS`	API（本番）	本番だけ必須。ローカルでは不要
-3. DBを起動する（Docker）
-```sh
-docker compose up -d db
-docker compose ps        # db が healthy になるまで待つ
-```
-Dockerを使わない場合は、手順2の `POSTGRES_*` をすべて消す（または未設定にする）と、APIは SQLite（`apps/api/db.sqlite3`）で動きます。
-4. APIを準備して起動する
-```sh
-cd apps/api
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# ぴあとも Web（apps/web）
 
-# .env の値をこのターミナルに読み込む（DBにPostgreSQLを使うとき）
-set -a; source ../../.env; set +a
+Next.js + TypeScript + Tailwind CSS。静的出力（`output: "export"`）で `out/` に書き出し、Firebase Hosting で配信する。
 
-python manage.py migrate     # DBの初期移行
-python manage.py runserver   # http://127.0.0.1:8000
-```
-確認: ブラウザかターミナルで `http://127.0.0.1:8000/api/v1/health/` を開くと `{"status":"ok","service":"piatomo-api"}` が返ります（プロセスの稼働確認で、DBの接続確認ではありません）。
-> ターミナルを開き直すたびに、`source .venv/bin/activate` と `set -a; source ../../.env; set +a` が必要です。
-5. Webを起動する
-別のターミナルで:
-```sh
+## 必要なもの
+- Node.js 20 以上（開発時は v26 で確認）
+
+## セットアップと確認
+```bash
 cd apps/web
-nvm use                # .nvmrc の版に切り替え（nvmを使う場合）
-npm ci                 # 依存の導入（package-lock.json どおり）
-npm run dev            # http://localhost:3000
+npm ci              # 依存の導入（package-lock.json どおり）
+npm run dev         # 開発サーバー http://localhost:3000
+npm run lint        # ESLint
+npm run typecheck   # 型チェック（tsc --noEmit）
+npm run build       # 静的ビルド → out/ が生成される
+npm run gen:api     # contracts/openapi.yaml から API の型（src/lib/api/schema.d.ts）を作り直す
 ```
-`NEXT_PUBLIC_API_BASE_URL` を設定しないときは、画面はモック（`src/lib/api/mock.ts`）で動きます。API（手順4）を起動していなくても、画面は確認できます。モックの合図などは `apps/web/README.md` を参照してください。
-現時点のAPIは `health` だけで、ブラウザからのアクセス許可（CORS）も未設定のため、WebをAPIにつなぐのはAPIの実装が進んでからです。つなぐときは `apps/web/.env.local`（Git管理外）に `NEXT_PUBLIC_API_BASE_URL=http://localhost:8000` を書きます。
-6. テスト・検査
-```sh
-# API（apps/api で、venv を有効にして、手順4の環境変数を読み込んだうえで）
-python manage.py check
-python manage.py test accounts config
 
-# Web（apps/web）
-npm run lint
-npm run typecheck
-npm run build            # 静的ビルド → out/（Google Fonts を取得するためインターネット接続が必要）
+## APIとモック
+- 画面は `src/lib/api/client.ts` の `api` を通して API を呼ぶ。窓口はこの1つだけにする。
+- 型は `contracts/openapi.yaml` から自動で作る（`npm run gen:api` → `src/lib/api/schema.d.ts`）。手で型を書かない。
+- エラーは `ApiError`（`status` が 0 なら通信できなかった）。判定には `isUnauthorized`・`isNotFound`・`isNetworkError` を使う。
+- `npm run dev` で `NEXT_PUBLIC_API_BASE_URL` を設定していないときは、**モック**（`src/lib/api/mock.ts`）が動く。
+- 本物の API につなぐときは、`apps/web/.env.local` に次を書く（このファイルはコミットしない）。
+  ```
+  NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+  ```
+- `npm run test:mock` でモックの動きを確かめられる（`scripts/mock-smoke.ts`）。
 
-# API契約（リポジトリ直下）
-python3 -m venv contracts/.venv
-contracts/.venv/bin/python -m pip install -r contracts/requirements.txt
-contracts/.venv/bin/openapi-spec-validator contracts/openapi.yaml    # "OK" が出れば成功
-```
-PRを出すと、変えた場所に応じて自動チェック（CI）が動きます。動くチェックの一覧は `.github/workflows/` にあります。CIの結果を待つ前に、手元でも上のコマンドを実行しておくと、失敗に早く気づけます。
-7. 終了・後片づけ
-やりたいこと	コマンド	影響
-APIやWebを止める	そのターミナルで `Ctrl + C`	なし
-DBを止める	`docker compose down`	DBのデータは残る
-DBを止めてデータも消す	`docker compose down -v`	DB内のデータがすべて消える（やり直したいときだけ）
-`.env` の `POSTGRES_DB` `POSTGRES_USER` `POSTGRES_PASSWORD` を変えても、すでに作られたDBには反映されません。変えたいときは `docker compose down -v` で作り直します。
-ホスト側のポート5432が使用中なら、`.env` の `POSTGRES_PORT` を変えます。
-8. ブランチ・PR・レビュー
-`main` から、1つのIssueにつき1つの短いブランチを作る（新機能は `feat/<Issue番号>-<内容>`、修正は `fix/<内容>`）。
-変更をコミットして push し、PRを作る。説明欄に `Closes #<Issue番号>` を書く。
-PRに、実行した確認コマンドと結果、未実施の項目を書く。
-受け入れ条件を確認し、CIが成功していることを確かめる。レビューを最低1人から受ける。
-レビュー済みで、CIが成功していれば `main` にマージする。`main` はいつでもデプロイできる状態に保つ。
-秘密情報を誤ってコミットしたときは、PRを出す前に（または出してすぐに）チームに伝えてください。 一度公開した鍵は、履歴から消しても無効にする（再発行する）必要があります。
-9. API契約（`contracts/openapi.yaml`）を変えるとき
-APIの要求・応答・認証・エラーを変えるPRでは、同じPRで `contracts/openapi.yaml` を更新する（必要なら仕様書とサンプルも）。
-手順6の「API契約」の検証コマンドで `OK` を確認する。
-Webの型を作り直す: `cd apps/web && npm run gen:api`（`src/lib/api/schema.d.ts` が更新される。差分も同じPRに含める）。
-決定を伴う変更は、`docs/08_decisions_and_open_items.md` の表に1行足す。
-PRに、変更内容・検証結果・未実装や未確認の項目を書く。契約草案と実装済みのAPIは区別して書く。
-よくあるつまずき
-症状	原因と対処
-`Missing PostgreSQL settings: ...`	`POSTGRES_*` が一部しか設定されていない。5つすべて設定するか、すべて外す
-`docker compose` が `Set POSTGRES_DB in .env` と言う	リポジトリ直下に `.env` がない。手順2を実行する
-DBに接続できない	`docker compose ps` で `healthy` か確認。ポート使用中なら `POSTGRES_PORT` を変える
-`npm run build` が失敗する（フォント取得エラー）	インターネットに接続できていない。接続してから再実行する
+### 本番にモックを入れない仕組み
+- 本番ビルド（`npm run build`）では、`next.config.ts` がモックを空の部品（`mock.disabled.ts`）に差し替える。
+- ビルドのあとに `scripts/check-no-mock.mjs` が自動で動き（`postbuild`）、成果物にモックの目印（`__PIATOMO_API_MOCK__`）があれば失敗する。
+- `NEXT_PUBLIC_API_MOCK=true` のまま本番ビルドすると失敗する。公開先を分けたステージングなど、どうしてもモック入りで本番モードのビルドが要るときだけ `NEXT_PUBLIC_MOCK_BUILD_ACK=staging-only` を付ける（本番には配備しない）。
+- この仕組みと動作確認のテストは、Shioriさんの #82 から取り込んだ。
+
+### シナリオでエラーの表示を試す
+URL に `?mock=…` を付けると、画面全体の状態を切り替えられる。ページを移っても続き、`?mock=normal` で戻る。
+| シナリオ | 動き |
+|---|---|
+| `normal` | ふつうの動き |
+| `emptyLessons` | 教材が1つもない |
+| `unauthorized` | すべて 401（ログインが切れた） |
+| `notFound` | 授業まわりがすべて 404 |
+| `pending` | 送信・解答・評価がずっと「処理中」のまま |
+| `networkError` | すべて通信エラー |
+| `newUser` | 初回設定がまだの人。初回設定以外のAPIはすべて 403 `ONBOARDING_REQUIRED`。登録できたら ふつうに戻る（再読み込みでまた未登録から） |
+
+ぴあ友の解答の結果だけを決めるときは `?mock_attempt=auto|correct|duplicate_form|blocked|unverified`。`auto` では、`\frac` を含む問題は「止まる（blocked）」、同じ形の問題の2回目は「回数に入らない（duplicate_form）」になる。
+
+### 学習ルーム（/study/?session=1）をモックで試す
+送る文章に次の合図を入れると、エラーなどの動きを確かめられる。
+| 合図 | 動き |
+|---|---|
+| `#202` | いったん「処理中」になり、少し待つと応答が届く |
+| `#409` | 状態の競合。文章が入力欄に戻り、もう一度送るよう案内が出る |
+| `#neterr` | 1回目だけ通信エラー。「もう一度送る」で同じ送信IDのまま再送する |
+| `#mastered` | 「移項」が習得済みになる（帯とアバターの確認用） |
+
+### 学習レポート（/report/?session=...）をモックで試す
+- 開くと、はじめに「評価中…」が出て、少したつとレポートが出る。
+- 学習ルームから「授業を終える」で来ると、その授業の会話（このタブのメモリだけにある）から「ぴあ友がつまずいたところ」が出る。直接開いたときや再読み込みしたあとは出ない。
+- `?session=99`：3観点すべて評価保留。`?session=98`：評価できなかった。それ以外：分かりやすさだけ評価保留（74点）。
+
+## ログイン（#10）
+- ログインは Google アカウントだけ（Firebase Authentication、ADR-016）。設定値は `src/lib/auth/firebase.ts`（公開してよい値）。
+- ホーム（`/`）は、ログインしていなければログイン画面になる。ほかの画面をログインせずに開くと、`/?next=元の画面` に移り、ログインのあとに元の画面へ戻る。
+- API が 401 を返したら（ログインが切れた）、ログイン画面に「期限が切れました」と出して戻す。
+- API を呼ぶときは、Firebase の ID トークンを `Authorization: Bearer …` で付ける（DRF 側の確認は #11）。
+- モックのときはログインした「ふり」をする（ホームの「ログアウト」でログイン画面を見られる）。モックのまま本物の Google ログインを試すときは、`apps/web/.env.local` に `NEXT_PUBLIC_AUTH=firebase` を書く。
+- Firebase コンソールで、Authentication の「ログイン方法」で Google を有効にし、「承認済みドメイン」に公開先のドメイン（Hosting のドメインなど）を入れておく。`localhost` は最初から入っている。
+
+## 初回登録（#43）
+- 初回設定の画面は `/` に出る（docs/04 の 2・9）。ログイン済みで未登録のとき、画面（`src/components/auth/OnboardingScreen.tsx`）がニックネーム・校種・学年とデータの扱いの説明、同意のチェックを出す。同意のチェックがなければ「はじめる」は押せない。
+- 未登録かどうかは、API が返す 403 `ONBOARDING_REQUIRED` で分かる。どの API でも 403 `ONBOARDING_REQUIRED` を受けたら、`client.ts` が `setOnboardingRequiredHandler` で登録された処理を呼び、`useAuth()` の `onboardingRequired` が true になる。ホーム以外の画面では、`AuthGate` が `/?next=元の画面` へ移し、登録のあとに元の画面へ戻る。
+- 登録は `POST /onboarding/complete/`。送る値は `nickname`・`school_level`・`grade`・`terms_version`・`privacy_notice_version`・`consent_confirmed: true`（これ以外は送らない）。版の値は `src/lib/onboarding.ts`。**利用規約・データの扱いの正式な文面は法務の確認（#65）のあとに決める。それまで版は仮の `draft-1`。**
+- モックで試す: `?mock=newUser` を付けて `/` を開く（ログインはモックなので、すぐ初回設定が出る）。ニックネームに `#neterr` と入れると、1回目だけ通信エラーになる。
+
+## 注意
+- 静的出力のため、SSR・Server Actions・動的ルート（`/study/[id]` など）は使わない。
+  画面は `/study/?session=...` のようにクエリで値を受け取る。
+- `next start` は使わない（静的出力では動かない）。
+- 秘密情報（APIキーなど）をこのアプリに置かない。
