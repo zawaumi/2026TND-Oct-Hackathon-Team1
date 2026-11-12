@@ -274,7 +274,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         <button
           type="button"
           onClick={() => void signOut()}
-          className="mt-6 text-[13.5px] font-bold text-link underline underline-offset-2"
+          className="mt-3 inline-flex min-h-11 items-center px-3 text-[13.5px] font-bold text-link underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
         >
           別のアカウントでログインしなおす
         </button>
