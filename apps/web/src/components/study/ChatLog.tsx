@@ -26,7 +26,7 @@ const ACTION_LABEL: Partial<Record<PeerResponse["action"], string>> = {
 function SmallAvatar() {
   return (
     <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-soft">
-      <PeerAvatar state="idle" size={44} decorative />
+      <PeerAvatar state="idle" size={44} decorative animated={false} />
     </span>
   );
 }

@@ -338,7 +338,7 @@ function ScoreCard({ report, comment }: { report: EvaluationReport; comment: str
 
       <div className="mt-3 flex items-center gap-2.5">
         <span className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-soft">
-          <PeerAvatar state="idle" size={48} decorative />
+          <PeerAvatar state="idle" size={48} decorative animated={false} />
         </span>
         <p className="rounded-[18px] bg-soft px-4 py-3 text-[14.5px]">
           <span className="sr-only">ぴあ友のひとこと：</span>

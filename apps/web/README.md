@@ -64,6 +64,15 @@ URL に `?mock=…` を付けると、画面全体の状態を切り替えられ
 - 対象の概念の初期値は「いま教えている概念」。選び直せる。
 - モックで試す：`x+3=7`（対応）、`x^2=4`（UNSUPPORTED）、分数キーで `x/2=3`（止まる）。1回目の正解のあと、同じ形（`x+5=9`）は「前と同じ形」になる。`?mock=networkError` は授業ごと読み込めなくなるので、通信失敗は、授業を開いたあとに、開発者ツールのコンソールで `sessionStorage.setItem("piatomo.mock.scenario","networkError")` を実行して試す（`normal` で戻す）。
 
+### ぴあ友のアバター
+- 絵は SVG、動きは Motion for React（`motion/react`）。公開の部品は `src/components/PeerAvatar.tsx`、中身（顔・まわりの飾り・動きの設定）は `src/components/avatar/`。
+- 6つの状態と動き：`idle` ゆっくり上下・ときどきまばたき／`listening` うなずく・波／`thinking` 頭がゆれる・点が順に光る／`question` 首をかしげる・「？」がはずむ／`practice_success` 1回だけ跳ねる・きらきら／`mastery_success` 1回だけ大きく跳ねる・星の目・紙吹雪。
+- **表情は知識の状態とは別。** `mastery_success` は、サーバーが返した `knowledge_changes` が「習得済みへの遷移」（`old_status` が `MASTERED` でなく、`new_status` が `MASTERED`）のときだけ。ぴあ友の発言（`emotion`）や「分かった」では出さない（発言が `mastery_success` でも、遷移がなければ `practice_success` にする）。
+- **同じ確定イベントは1回だけ。** API に `event_id` はないので、教えた応答は `turn_id` と `concept_id` の組、ぴあ友の解答は `attempt.id` と `concept_id` の組を識別子にする（`src/lib/avatarEvents.ts`。契約は変えていない）。同じ識別子を2度受け取っても、習得のお知らせも演出も1回だけ。覚えておくのは、授業の画面を開いている間（メモリの中）、最大200件で、超えたら古いものから忘れる。再読み込みのあとは、サーバーから同じイベントが届かないので、持ち越さない。
+- アバターは、状態が変わったときか、`eventKey` が変わったときだけ、動きを最初から再生する。同じ状態・同じ `eventKey` のまま描き直しても、再生しない。API に `event_id` を足す場合は、契約を先に更新して、識別子をそれに置き換える。
+- `prefers-reduced-motion` では動かさず、止めた絵で出す。頭の傾き・「？」・点・星・紙吹雪の絵で、状態は絵でも分かる。アバターの下の一言（文字）も、そのまま出る。会話の小さなアイコンなど、動かしたくないところは `animated={false}`。
+- `npm run test:avatar` で、確定イベントの判定と重複の抑止を確かめられる。
+
 ### 学習レポート（/report/?session=...）をモックで試す
 - 開くと、はじめに「評価中…」が出て、少したつとレポートが出る。
 - 学習ルームから「授業を終える」で来ると、その授業の会話（このタブのメモリだけにある）から「ぴあ友がつまずいたところ」が出る。直接開いたときや再読み込みしたあとは出ない。

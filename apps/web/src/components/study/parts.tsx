@@ -311,10 +311,19 @@ export function Composer({
 /* ───────── ぴあ友のカード ───────── */
 
 /** PC：左列の上のカード */
-export function PeerCard({ emotion, masteredLabel }: { emotion: PeerEmotion; masteredLabel: string | null }) {
+export function PeerCard({
+  emotion,
+  masteredLabel,
+  eventKey,
+}: {
+  emotion: PeerEmotion;
+  masteredLabel: string | null;
+  /** 習得の確定イベントの識別子。変わったときだけ、習得の演出をもう一度再生する */
+  eventKey?: string | null;
+}) {
   return (
     <section className="flex flex-col items-center rounded-card bg-card px-5 pt-4 pb-4" aria-label="ぴあ友">
-      <PeerAvatar state={emotion} size={190} decorative />
+      <PeerAvatar state={emotion} size={190} decorative eventKey={eventKey} />
       <p className="mt-1 text-center text-[15px] font-bold" aria-live="polite">
         {emotionText(emotion, masteredLabel)}
       </p>
@@ -326,12 +335,14 @@ export function PeerCard({ emotion, masteredLabel }: { emotion: PeerEmotion; mas
 export function PeerSummaryMobile({
   emotion,
   masteredLabel,
+  eventKey,
   percent,
   concepts,
   currentId,
 }: {
   emotion: PeerEmotion;
   masteredLabel: string | null;
+  eventKey?: string | null;
   percent: number | null;
   concepts: ConceptView[];
   currentId: number | null;
@@ -339,7 +350,7 @@ export function PeerSummaryMobile({
   return (
     <section className="rounded-card bg-card px-4 pt-3 pb-3 shadow-[0_2px_10px_rgba(60,80,170,0.06)]" aria-label="ぴあ友">
       <div className="flex items-center gap-3">
-        <PeerAvatar state={emotion} size={72} decorative className="shrink-0" />
+        <PeerAvatar state={emotion} size={72} decorative className="shrink-0" eventKey={eventKey} />
         <p
           className="relative flex-1 rounded-2xl bg-soft px-4 py-2.5 text-center text-[15px] font-bold"
           aria-live="polite"
