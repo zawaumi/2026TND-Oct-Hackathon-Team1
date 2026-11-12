@@ -1,8 +1,8 @@
-"""対話の方針を DRF が決める（docs/03 の B、Issue #29）。
+"""対話の方針を DRF が決める（docs/03 の B）。
 
 同じ入力（教材・知識の状態・説明文・ターンの番号）なら、いつも同じ方針になる。
 action と対象の概念は、ここで決めたものだけを使う。DeepSeek には言い方だけを任せる。
-Jev の評価候補（#28）ができたら、理由・例の有無の判定をそれに置き換える。
+Jev の評価候補が使えるようになったら、理由・例の有無の判定をそれに置き換える。
 """
 
 import re
@@ -21,7 +21,7 @@ MIN_EXPLANATION = 15  # これより短い説明では「説明済み」にし�
 class ConceptState:
     id: int
     status: str
-    prerequisites_ready: bool = True  # 前提（#16）が練習中か習得済み。前提関係がなければ True
+    prerequisites_ready: bool = True  # 前提の概念が練習中か習得済み。前提関係がなければ True
 
 
 @dataclass(frozen=True)

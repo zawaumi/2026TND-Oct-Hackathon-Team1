@@ -84,7 +84,7 @@ class LessonApiTests(TestCase):
         self.assertEqual(by_id[self.t["c1"].id]["status"], "MASTERED")
         self.assertEqual(by_id[self.t["c2"].id]["status"], "UNKNOWN")
         self.assertEqual(by_id[self.t["c1"].id]["label"], "等式の性質")
-        self.assertEqual(res["edges"], [])  # 前提関係は #16 で入る
+        self.assertEqual(res["edges"], [])  # 前提関係のモデルはまだない
         # 単元を渡すと、その下の小単元の概念がまとめて出る
         unit_nodes = self.client.get(f"/api/v1/knowledge-graph/?lesson_id={self.t['unit'].id}").json()["nodes"]
         self.assertEqual(len(unit_nodes), 3)

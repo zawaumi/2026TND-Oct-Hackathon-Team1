@@ -1,4 +1,4 @@
-"""授業（学習セッション）と、授業で選んだ小単元（docs/02_data_model.md の 1・2、Issue #19）。
+"""授業（学習セッション）と、授業で選んだ小単元（docs/02_data_model.md の 1・2）。
 
 - 授業は本人とそのぴあ友に属する（owner と peer の持ち主は同じ）。
 - 小単元は複数選べる。単元を選んだときは小単元まで展開して SessionLesson に記録する。
@@ -6,6 +6,7 @@
 """
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from lessons.models import Lesson
@@ -58,7 +59,7 @@ class SessionLesson(models.Model):
 
 
 class LearningTurn(models.Model):
-    """1回の送信（ターン）の受付と結果（docs/02、Issue #23・#24 の最小限）。
+    """1回の送信（ターン）の受付と結果（docs/02。最小限の実装）。
 
     - (授業, request_id) で一意。同じ送信の再送には前の結果を返し、二重に処理しない。
     - 会話の本文は保存しない。本文の一致はハッシュ（input_hash）で確かめる。
@@ -87,7 +88,7 @@ class LearningTurn(models.Model):
 
 
 class TurnNote(models.Model):
-    """ターンごとの短い所見（観点のコード＋100字以内）。授業の評価（#42）が終わるまでだけ保存する（docs/03 の G）。"""
+    """ターンごとの短い所見（観点のコード＋100字以内）。授業の評価が終わるまでだけ保存する（docs/03 の G）。"""
 
     class Criterion(models.TextChoices):
         ACCURACY = "accuracy", "正確さ"
@@ -98,6 +99,8 @@ class TurnNote(models.Model):
     turn = models.ForeignKey(LearningTurn, on_delete=models.CASCADE, related_name="notes")
     criterion = models.CharField("観点", max_length=10, choices=Criterion.choices)
     note = models.CharField("所見", max_length=100)
+    # ルーブリックの段階（1〜5）の候補。Jev が使えるようになるまでは DeepSeek の所見に付けてもらう。なければ空
+    level = models.PositiveSmallIntegerField("段階", null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(5)])
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

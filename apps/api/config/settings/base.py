@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     "lessons",
     "peers",
     "learning",
+    "evaluations",
     "integrations",
 ]
 
@@ -60,7 +61,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 AUTH_USER_MODEL = "accounts.User"
 
-# --- 外部AI（DeepSeek、#30）。キーはサーバーの環境変数からだけ読む。NEXT_PUBLIC_* には置かない ---
+# --- 外部AI（DeepSeek）。キーはサーバーの環境変数からだけ読む。NEXT_PUBLIC_* には置かない ---
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "").strip()
 DEEPSEEK_BASE_URL = os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = os.environ.get("DEEPSEEK_MODEL", "deepseek-chat")
@@ -69,7 +70,7 @@ DEEPSEEK_TIMEOUT_SECONDS = float(os.environ.get("DEEPSEEK_TIMEOUT_SECONDS", "15"
 DEEPSEEK_MOCK = os.environ.get("DEEPSEEK_MOCK", "").lower() == "true"
 DEEPSEEK_MOCK_MODE = os.environ.get("DEEPSEEK_MOCK_MODE", "normal")
 
-# --- ログイン（Firebase の ID トークン、#11） ---
+# --- ログイン（Firebase の ID トークン） ---
 # プロジェクト ID は公開してよい値（画面の apps/web/src/lib/auth/firebase.ts と同じ）
 FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "tnd2026-oct-hackathon")
 

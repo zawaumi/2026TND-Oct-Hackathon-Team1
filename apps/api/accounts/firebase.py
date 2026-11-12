@@ -1,4 +1,4 @@
-"""Firebase の ID トークンを確かめる（Issue #11）。
+"""Firebase の ID トークンを確かめる。
 
 確かめること（Firebase の公式の手順に合わせる）：
 - 署名：Google が公開している鍵（securetoken@system.gserviceaccount.com）で、RS256 の署名が正しい

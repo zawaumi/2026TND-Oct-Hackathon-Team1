@@ -52,7 +52,7 @@ class TurnApiTests(TestCase):
         self.assertEqual(body["knowledge_changes"], [{"concept_id": self.t["c3"].id, "old_status": "UNKNOWN", "new_status": "INTRODUCED"}])
         self.assertEqual(PeerKnowledge.objects.get(peer=self.peer, concept=self.t["c3"]).status, "INTRODUCED")
         self.assertEqual(body["knowledge_version"], 1)
-        self.assertEqual(TurnNote.objects.filter(session_id=self.sid).count(), 1)  # 所見を保存
+        self.assertEqual(TurnNote.objects.filter(session_id=self.sid).count(), 3)  # 所見を保存（モックは3観点）
 
     def test_same_request_id_returns_same_result_without_reprocessing(self):
         r = rid()
@@ -140,7 +140,7 @@ class TurnApiTests(TestCase):
 
 
 class PolicyTests(SimpleTestCase):
-    """#29：同じ入力なら同じ方針。未許可の action・授業の外の概念を出さない"""
+    """方針：同じ入力なら同じ方針。未許可の action・授業の外の概念を出さない"""
 
     def c(self, status="UNKNOWN", ready=True, id=103):
         return ConceptState(id=id, status=status, prerequisites_ready=ready)
@@ -167,7 +167,7 @@ class PolicyTests(SimpleTestCase):
 
 
 class ValidationTests(SimpleTestCase):
-    """#31：だめな出力を捨てる"""
+    """出力の検証：だめな出力を捨てる"""
 
     d = Decision(action="ask_why", concept_id=103, introduce=False)
 
@@ -195,10 +195,21 @@ class ValidationTests(SimpleTestCase):
         _, findings = validate(
             {"action": "ask_why", "concept_id": 103, "message": "どうして？", "emotion": "question",
              "findings": [{"criterion": "logic", "note": "理由が短い"}, {"criterion": "x", "note": "a"},
-                          {"criterion": "clarity", "note": "「そのまま引用」"}, {"criterion": "accuracy", "note": "あ" * 101}]},
+                          {"criterion": "clarity", "note": "「そのまま引用」"}, {"criterion": "accuracy", "note": "あ" * 101},
+                          {"criterion": "logic", "level": 5, "note": "同じ観点の2件目"},
+                          {"criterion": "accuracy", "level": True, "note": "段階が真偽値"},
+                          {"criterion": "clarity", "level": 4, "note": "例がある"}]},
             self.d,
         )
-        self.assertEqual(findings, [{"criterion": "logic", "note": "理由が短い"}])
+        # 段階がなければ None、観点ごとに1件、段階がおかしければ文だけ残す
+        self.assertEqual(
+            findings,
+            [
+                {"criterion": "logic", "level": None, "note": "理由が短い"},
+                {"criterion": "accuracy", "level": None, "note": "段階が真偽値"},
+                {"criterion": "clarity", "level": 4, "note": "例がある"},
+            ],
+        )
 
 
 class InputAndTransitionTests(TestCase):

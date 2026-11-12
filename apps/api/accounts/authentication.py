@@ -1,6 +1,6 @@
-"""DRF の認証：Authorization: Bearer <Firebase の ID トークン>（Issue #11）。
+"""DRF の認証：Authorization: Bearer <Firebase の ID トークン>。
 
-- 認証の処理の中ではユーザーを作らない。登録は初回設定（POST /onboarding/complete/、#12）で、同意を受け取ってから。
+- 認証の処理の中ではユーザーを作らない。登録は初回設定（POST /onboarding/complete/）で、同意を受け取ってから。
 - 登録済みなら、そのユーザーとして通す。
 - ログインはしているが未登録なら、初回設定のビュー（allow_unregistered = True）だけを通し、
   ほかは 403 ONBOARDING_REQUIRED（contracts の Forbidden：初回設定未完了）にする。
