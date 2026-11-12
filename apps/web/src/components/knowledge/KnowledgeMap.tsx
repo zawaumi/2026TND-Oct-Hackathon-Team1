@@ -1,6 +1,7 @@
 "use client";
 
 import "@xyflow/react/dist/style.css";
+import "./knowledge.css";
 import { Background, Controls, MarkerType, ReactFlow, type Edge, type NodeChange } from "@xyflow/react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
@@ -86,7 +87,7 @@ export function KnowledgeMap() {
   const [dragging, setDragging] = useState(false);
   const readyRef = useRef(false);
   const dragStart = useRef<number | null>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
 
   // 取得（開いたとき・「最新にする」・タブに戻ったとき）。取り直しても、前の表示は残す
   useEffect(() => {
@@ -208,12 +209,41 @@ export function KnowledgeMap() {
   const sheetOpen = !desktop && detail != null;
   useEffect(() => {
     if (!sheetOpen) return;
-    closeRef.current?.focus();
+    // 開く前にフォーカスしていた所（選んだノード）を覚えておき、閉じたら戻す
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // フォーカスは、ボタンではなくシート自体に置く。ボタンに置くと、ノードを選んだ Enter の押下が、そのまま「閉じる」を押したことになる
+    sheetRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSelectedId(null);
+      if (e.key === "Escape") {
+        setSelectedId(null);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      // Tab は、シートの中だけで回す（外へ出さない）
+      const items = [...(sheetRef.current?.querySelectorAll<HTMLElement>("button, a[href], [tabindex]:not([tabindex='-1'])") ?? [])].filter(
+        (el) => !el.hasAttribute("disabled") && el.getClientRects().length > 0,
+      );
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      const inside = sheetRef.current?.contains(active) ?? false;
+      if (!inside) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && (active === first || active === sheetRef.current)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (opener?.isConnected) opener.focus();
+    };
   }, [sheetOpen]);
 
   const refresh = () => {
@@ -231,7 +261,7 @@ export function KnowledgeMap() {
 
   return (
     <AppShell active="knowledge">
-      <main className="mx-auto w-full max-w-[1280px] px-4 pt-5 pb-8 lg:px-7 lg:pt-7">
+      <main inert={sheetOpen} className="mx-auto w-full max-w-[1280px] px-4 pt-5 pb-8 lg:px-7 lg:pt-7">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <h1 className="text-[22px] font-black lg:text-[26px]">ぴあ友の知識マップ</h1>
           <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -343,6 +373,7 @@ export function KnowledgeMap() {
                   nodesConnectable={false}
                   elementsSelectable
                   panOnDrag
+                  attributionPosition="bottom-left"
                   aria-label="ぴあ友の知識マップ。ノードを選ぶと、詳細が出ます"
                 >
                   <Background gap={22} color="#E3E8FA" />
@@ -388,11 +419,13 @@ export function KnowledgeMap() {
         <div className="fixed inset-0 z-40 flex items-end" role="presentation">
           <button type="button" aria-label="詳細を閉じる" tabIndex={-1} className="absolute inset-0 bg-black/30" onClick={() => setSelectedId(null)} />
           <div
+            ref={sheetRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby={titleId}
             style={{ transform: `translateY(${dragY}px)`, transition: dragging ? "none" : "transform 180ms ease" }}
-            className="relative max-h-[78dvh] w-full overflow-y-auto rounded-t-[26px] bg-card px-5 pt-2 pb-[calc(20px+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(40,60,140,0.2)]"
+            className="relative max-h-[78dvh] w-full overflow-y-auto outline-none rounded-t-[26px] bg-card px-5 pt-2 pb-[calc(20px+env(safe-area-inset-bottom))] shadow-[0_-8px_30px_rgba(40,60,140,0.2)]"
           >
             <div
               className="mx-auto flex h-8 w-full cursor-grab touch-none items-center justify-center"
@@ -420,7 +453,6 @@ export function KnowledgeMap() {
               <span aria-hidden="true" className="h-1.5 w-12 rounded-full bg-[#CBD2EC]" />
             </div>
             <button
-              ref={closeRef}
               type="button"
               onClick={() => setSelectedId(null)}
               className="absolute top-2 right-3 h-10 rounded-xl px-3 text-[14px] font-bold text-link focus-visible:outline-2 focus-visible:outline-link"

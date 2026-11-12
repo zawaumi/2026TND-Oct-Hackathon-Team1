@@ -79,7 +79,7 @@ export function UnderstandingBar({ percent, compact = false }: { percent: number
     <div>
       <div className="flex items-baseline justify-between">
         <span className={`font-bold ${compact ? "text-[14px]" : "text-[15px]"}`}>ぴあ友の理解度</span>
-        <span className={`font-bold text-primary ${compact ? "text-[17px]" : "text-[18px]"}`}>
+        <span className={`font-bold text-link ${compact ? "text-[17px]" : "text-[18px]"}`}>
           {percent == null ? "—" : `${percent}%`}
         </span>
       </div>
@@ -166,7 +166,7 @@ export function ConceptFold({ concepts, currentId }: { concepts: ConceptView[]; 
     <div className="mt-3 border-t border-line pt-2.5">
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 text-left"
+        className="flex min-h-10 w-full items-center justify-between gap-2 text-left"
         aria-expanded={open}
         aria-controls="concept-list-sp"
         onClick={() => setOpen((v) => !v)}
