@@ -1,4 +1,4 @@
-"""公開教材（CURATED）の小単元・概念を、データファイルから開発DBへ投入する（Issue #17）。
+"""公開教材（CURATED）の小単元・概念を、データファイルから開発DBへ投入する。
 
     python manage.py load_curated_lessons --check       # 検査だけ（DBを触らない）。例題の検算の結果を出す
     python manage.py load_curated_lessons               # 下書き（draft）として投入する
@@ -8,7 +8,7 @@
 - 既定では公開しない。公開できるのは、数学内容と出典のレビュー（別の人）が記録されたときだけ。
   開発DBで画面を試すためだけに、DEBUG=True のときに限り --allow-unreviewed で公開できる（本番では使えない）。
 - すでに公開されている教材を、このコマンドが下書きに戻すことはない。
-- 前提関係（ConceptPrerequisite、#16）と習得条件（MasteryPolicy、#39）のモデルがまだないときは、その分を飛ばす。
+- 前提関係（ConceptPrerequisite）と習得条件（MasteryPolicy）のモデルがまだないときは、その分を飛ばす。
   データファイルには入っているので、モデルができたら再実行すればよい。
 """
 
@@ -26,7 +26,7 @@ DEFAULT_FILE = Path(__file__).resolve().parents[2] / "data" / "curated_jhs1_math
 
 
 class Command(BaseCommand):
-    help = "公開教材（CURATED）の小単元・概念をデータファイルから投入する（#17）"
+    help = "公開教材（CURATED）の小単元・概念をデータファイルから投入する"
 
     def add_arguments(self, parser):
         parser.add_argument("--file", default=str(DEFAULT_FILE), help="データファイル（既定：lessons/data/curated_jhs1_math_equation.json）")
@@ -119,19 +119,19 @@ class Command(BaseCommand):
             for order, code in enumerate(l.get("concepts", []), start=1):
                 LessonConcept.objects.update_or_create(lesson=lesson, concept=concepts[code], defaults={"sort_order": order})
 
-        # ---- 前提関係（#16 のモデルがあるときだけ）
+        # ---- 前提関係（モデルがあるときだけ）
         edges = [(p, c["code"]) for c in data["concepts"] for p in c.get("prerequisites", [])]
         try:
-            from lessons.models import ConceptPrerequisite  # noqa: PLC0415  #16 で追加される
+            from lessons.models import ConceptPrerequisite  # noqa: PLC0415  あとで追加されるモデル
         except ImportError:
             ConceptPrerequisite = None
         if ConceptPrerequisite is None:
-            self.stdout.write(self.style.WARNING(f"前提関係 {len(edges)} 本：ConceptPrerequisite（#16）がまだないので投入しません。モデルができたら再実行してください。"))
+            self.stdout.write(self.style.WARNING(f"前提関係 {len(edges)} 本：ConceptPrerequisite がまだないので投入しません。モデルができたら再実行してください。"))
         else:
             for pre, code in edges:
                 ConceptPrerequisite.objects.get_or_create(concept=concepts[code], prerequisite=concepts[pre])
             self.stdout.write(f"前提関係 {len(edges)} 本を投入しました。")
-        self.stdout.write(self.style.WARNING("習得条件（MasteryPolicy）：#39 のモデルができるまで投入しません（データファイルには入っています）。"))
+        self.stdout.write(self.style.WARNING("習得条件（MasteryPolicy）：モデルができるまで投入しません（データファイルには入っています）。"))
 
         n_pub = Lesson.objects.filter(scope=Scope.CURATED, status=Lesson.Status.PUBLISHED, id__in=[x.id for x in lessons.values()]).count()
         self.stdout.write(self.style.SUCCESS(

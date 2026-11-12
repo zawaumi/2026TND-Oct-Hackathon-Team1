@@ -1,4 +1,4 @@
-"""公開教材データ（#17）の検査と投入のテスト。"""
+"""公開教材データの検査と投入のテスト。"""
 
 import copy
 import json
@@ -184,7 +184,7 @@ class LoadCommandTests(TestCase):
         try:
             from .models import ConceptPrerequisite
         except ImportError:
-            self.skipTest("ConceptPrerequisite（#16）がまだない")
+            self.skipTest("ConceptPrerequisite がまだない")
         run()
         pairs = {(p.prerequisite.code, p.concept.code) for p in ConceptPrerequisite.objects.select_related("concept", "prerequisite")}
         self.assertIn(("equality-add-subtract", "transposition"), pairs)
