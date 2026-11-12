@@ -22,6 +22,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     # 開発中に画面（localhost:3000）から API を呼べるようにする（config/cors.py）
     "config.cors.SimpleCorsMiddleware",
+    # 本人だけの応答を CDN（Firebase Hosting）にキャッシュさせない（config/cache.py）
+    "config.cache.ApiNoStoreMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",

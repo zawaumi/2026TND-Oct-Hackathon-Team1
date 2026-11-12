@@ -95,6 +95,8 @@ APIの要求・応答・認証・エラーを変えるPRでは、同じPRで `co
 Webの型を作り直す: `cd apps/web && npm run gen:api`（`src/lib/api/schema.d.ts` が更新される。差分も同じPRに含める）。
 決定を伴う変更は、`docs/08_decisions_and_open_items.md` の表に1行足す。
 PRに、変更内容・検証結果・未実装や未確認の項目を書く。契約草案と実装済みのAPIは区別して書く。
+10. 本番公開
+画面は Firebase Hosting、API は Cloud Run、DB は Cloud SQL に置きます。手順は [`docs/deploy.md`](docs/deploy.md) にまとめました（`firebase.json` が配信と `/api/**` の転送を決めています）。秘密の値は Secret Manager にだけ置きます。
 よくあるつまずき
 症状	原因と対処
 `Missing PostgreSQL settings: ...`	`POSTGRES_*` が一部しか設定されていない。5つすべて設定するか、すべて外す
