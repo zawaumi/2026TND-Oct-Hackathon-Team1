@@ -35,28 +35,28 @@ export function HomeEntry() {
   const uid = signedIn ? user.uid : null;
 
   // 登録済みか確かめる（GET /users/me/）。未登録なら API が 403 ONBOARDING_REQUIRED を返し、
-  // client.ts が onboardingRequired を立てる。確認が済んだ人（uid）と、失敗した人を覚える
-  const [okUid, setOkUid] = useState<string | null>(null);
-  const [failedUid, setFailedUid] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
+  // client.ts が onboardingRequired を立てる。確認が済んだ人（uid）を覚える。
+  // 通信などで確認できなかったときも、ホームは出す（取得に失敗してもボタンは使える、というホームの決まり）。
+  // 本当に未登録なら、ホームや次の画面の API が 403 を返すので、そこで初回設定に移る。
+  const [checkedUid, setCheckedUid] = useState<string | null>(null);
   useEffect(() => {
     if (!uid) return;
     let alive = true;
     api.getMe().then(
       () => {
-        if (alive) setOkUid(uid);
+        if (alive) setCheckedUid(uid);
       },
       (e: unknown) => {
         if (!alive || isOnboardingRequired(e) || isUnauthorized(e)) return; // どちらも別の処理が引き受ける
-        setFailedUid(uid);
+        setCheckedUid(uid); // 確認できなかった（通信の失敗など）。ホームは出す
       },
     );
     return () => {
       alive = false;
     };
-  }, [uid, attempt]);
+  }, [uid]);
 
-  const ready = signedIn && okUid === uid && !onboardingRequired;
+  const ready = signedIn && checkedUid === uid && !onboardingRequired;
   useEffect(() => {
     if (ready && next) router.replace(next);
   }, [ready, next, router]);
@@ -67,27 +67,10 @@ export function HomeEntry() {
     return (
       <OnboardingScreen
         onDone={() => {
-          setOkUid(uid); // 登録できた＝確認済み。次へ進む
+          setCheckedUid(uid); // 登録できた＝確認済み。次へ進む
           onboardingDone();
         }}
       />
-    );
-  }
-  if (failedUid === uid && okUid !== uid) {
-    return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
-        <p className="text-[16px] font-bold">通信できませんでした</p>
-        <button
-          type="button"
-          onClick={() => {
-            setFailedUid(null);
-            setAttempt((n) => n + 1);
-          }}
-          className="rounded-2xl bg-primary px-6 py-3 font-bold text-white"
-        >
-          もう一度
-        </button>
-      </main>
     );
   }
   if (!ready || next) return <Loading />;
