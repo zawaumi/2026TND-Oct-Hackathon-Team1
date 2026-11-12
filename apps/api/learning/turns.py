@@ -1,10 +1,10 @@
-"""1ターンの処理（docs/01 の 3、docs/03、Issue #32。受付と競合は #23・#24 の最小限）。
+"""1ターンの処理（docs/01 の 3、docs/03。受付と競合の制御は最小限の実装）。
 
 流れ：
   1. 受付（短いトランザクション）：(授業, request_id) で再送か新しい送信かを判定し、処理中として記録する
-  2. 方針（#29）：DRF が action と対象の概念を決める
-  3. DeepSeek（#30）：ロックを持たずに呼ぶ（AI を待つ間に DB をふさがない）
-  4. 検証（#31）：だめなら定型の応答にし、知識は変えない
+  2. 方針（learning/policy.py）：DRF が action と対象の概念を決める
+  3. DeepSeek（integrations/deepseek.py）：ロックを持たずに呼ぶ（AI を待つ間に DB をふさがない）
+  4. 検証（learning/validation.py）：だめなら定型の応答にし、知識は変えない
   5. 確定（短いトランザクション）：ぴあ友の知識の版が受付のときと同じなら、状態を進めて応答を保存する
 """
 
@@ -27,7 +27,7 @@ from .models import LearningSession, LearningTurn, TurnNote
 from .policy import ConceptState, Decision, choose
 from .validation import fallback, validate
 
-PROCESSING_TTL = timedelta(seconds=60)  # これを過ぎた「処理中」は、同じ送信の再送でやり直せる（#25 の最小限）
+PROCESSING_TTL = timedelta(seconds=60)  # これを過ぎた「処理中」は、同じ送信の再送でやり直せる
 
 
 class TurnError(Exception):
@@ -182,7 +182,7 @@ def _process(session, turn, text, verdict, recent_context):
     with transaction.atomic():
         locked = Peer.objects.select_for_update().get(pk=peer.pk)
         if locked.knowledge_version != turn.knowledge_version:
-            # 処理している間に、ほかの処理（リセットや演習）で知識が変わった。古い処理として捨てる（#24）
+            # 処理している間に、ほかの処理（リセットや演習）で知識が変わった。古い処理として捨てる（docs/01 の競合制御）
             raise TurnError(409, "STALE_KNOWLEDGE_VERSION", "状態が更新されました。最新情報を取得してください。")
         changes = []
         if decision.introduce and not fallback_used:
@@ -199,7 +199,7 @@ def _process(session, turn, text, verdict, recent_context):
         }
         LearningTurn.objects.filter(pk=turn.pk).update(status=LearningTurn.Status.DONE, result_cache=response)
         if verdict != "DATA_ONLY":
-            # 命令らしい文が混ざった説明の所見は、評価（#41）の根拠にしない（採点の誘導を避ける）
+            # 命令らしい文が混ざった説明の所見は、評価の根拠にしない（採点の誘導を避ける）
             TurnNote.objects.bulk_create(
                 [
                     TurnNote(session=session, turn=turn, criterion=f["criterion"], level=f.get("level"), note=f["note"])

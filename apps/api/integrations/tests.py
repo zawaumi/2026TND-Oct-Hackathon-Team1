@@ -26,7 +26,7 @@ def turn(**kw):
 
 
 class PayloadTests(SimpleTestCase):
-    """#27：外部AIへ渡すデータを最小にする"""
+    """外部AIへ渡すデータを最小にする"""
 
     def test_only_allowed_fields_and_no_identifiers(self):
         data, _ = build_peer_turn_payload(turn())
@@ -88,7 +88,7 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 class DeepSeekClientTests(SimpleTestCase):
-    """#30：正常・不正JSON・エラー・タイムアウト"""
+    """DeepSeek のつなぎ：正常・不正JSON・エラー・タイムアウト"""
 
     @classmethod
     def setUpClass(cls):

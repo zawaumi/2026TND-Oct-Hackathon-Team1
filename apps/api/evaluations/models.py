@@ -1,4 +1,4 @@
-"""評価（docs/02 の evaluations、Issue #40）。
+"""評価（docs/02 の evaluations）。
 
 - Rubric（ルーブリック）は版で管理する。評価には、使ったルーブリックの版を記録する（何の尺度で判定したか追えるように）。
 - 観点（Criterion）は accuracy・logic・clarity の3つ（ADR-015）。配点は 40・30・30（仮）。
@@ -86,7 +86,7 @@ class Evaluation(models.Model):
 
     session = models.OneToOneField(LearningSession, on_delete=models.CASCADE, related_name="evaluation")
     rubric = models.ForeignKey(Rubric, on_delete=models.PROTECT, related_name="evaluations")
-    # 評価候補を出したもの。Jev（#28）ができるまでは DeepSeek のターンごとの所見
+    # 評価候補を出したもの。Jev が使えるようになるまでは DeepSeek のターンごとの所見
     engine = models.CharField("評価候補の出どころ", max_length=32)
     model_version = models.CharField("モデル", max_length=64, blank=True)
     status = models.CharField("状態", max_length=12, choices=Status.choices)

@@ -1,4 +1,4 @@
-# ぴあとも API のコンテナ（Cloud Run 用、#57 で配備する）
+# ぴあとも API のコンテナ（Cloud Run 用）
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \

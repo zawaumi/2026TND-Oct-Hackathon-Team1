@@ -1,4 +1,4 @@
-"""教材の階層と概念（docs/02_data_model.md の 1〜3、Issue #15）。
+"""教材の階層と概念（docs/02_data_model.md の 1〜3）。
 
 - 学習指導要領の階層は CurriculumItem、アプリで選ぶ単位は Lesson（parent で何段でも深くできる）。
 - Concept は複数の Lesson から LessonConcept で共有する。同じ概念を教材ごとに複製しない。

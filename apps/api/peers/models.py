@@ -1,8 +1,8 @@
-"""ぴあ友と、その知識の状態（docs/02_data_model.md の 1・4、Issue #20）。
+"""ぴあ友と、その知識の状態（docs/02_data_model.md の 1・4）。
 
 - ぴあ友はユーザー1人に1人（MVP）。
 - 知識の状態は (ぴあ友, 概念) ごとに1行。行がない概念は「未習（UNKNOWN）」とみなす。
-- 状態を変えてよいのは状態の遷移サービス（#21）だけ。画面から送られた状態を正にしない。
+- 状態を変えてよいのは状態の遷移サービス（peers/knowledge.py）だけ。画面から送られた状態を正にしない。
 """
 
 from django.conf import settings
@@ -23,7 +23,7 @@ class Peer(models.Model):
     display_name = models.CharField("名前", max_length=40, default="ぴあ友")
     avatar_id = models.CharField("アバター", max_length=40, default="default")
     persona_code = models.CharField("人物像", max_length=40, blank=True)
-    # 知識が変わるたびに増やす。同時に届いた処理の衝突の検出に使う（#24）
+    # 知識が変わるたびに増やす。同時に届いた処理の衝突の検出に使う（docs/01 の競合制御）
     knowledge_version = models.PositiveIntegerField("知識の版", default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -39,7 +39,7 @@ class PeerKnowledge(models.Model):
     peer = models.ForeignKey(Peer, on_delete=models.CASCADE, related_name="knowledge")
     concept = models.ForeignKey(Concept, on_delete=models.PROTECT, related_name="peer_knowledge")
     status = models.CharField("状態", max_length=10, choices=KnowledgeStatus.choices, default=KnowledgeStatus.UNKNOWN)
-    # 習得の根拠になった、検証済みの正答の数。習得判定（#39）が更新する
+    # 習得の根拠になった、検証済みの正答の数。習得判定が更新する
     verified_correct = models.PositiveIntegerField("検証済みの正答", default=0)
     # 知識リセットの世代。リセットのたびに増え、前の世代の根拠は数えない
     reset_epoch = models.PositiveIntegerField("リセットの世代", default=0)

@@ -1,7 +1,7 @@
-"""DeepSeek のつなぎ（Issue #30、docs/03 の B）。
+"""DeepSeek のつなぎ（docs/03 の B）。
 
 - 方針（action）と対象の概念は DRF が決める。DeepSeek はぴあ友らしい言い方で1つ質問する文を作るだけ。
-- 返ってきた JSON は「まだ検証していない」もの。画面に出す前に、必ず出力の検証（#31）を通す。
+- 返ってきた JSON は「まだ検証していない」もの。画面に出す前に、必ず出力の検証（learning/validation.py）を通す。
 - API キーはサーバーの環境変数（DEEPSEEK_API_KEY）からだけ読む。キーと会話の中身はログに出さない。
 - キーがないとき（開発・テスト）はモックを使う。
 """
@@ -158,7 +158,7 @@ class MockDeepSeekClient:
         if self.mode == "invalid_json":
             return DeepSeekResult(*parse_completion('{"choices":[{"message":{"content":"ぴあ友です！{壊れた"}}]}'), 0, tuple(redacted))
         if self.mode == "master_all":
-            # 検証（#31）で棄却されるべき応答
+            # 出力の検証で棄却されるべき応答
             return DeepSeekResult({"action": "master_all", "concept_id": turn.concept_id, "message": "全部わかりました！", "emotion": "mastery_success"}, None, 0, tuple(redacted))
         message = MOCK_MESSAGES.get(turn.action, "もう少し教えてください！").format(title=turn.concept_title)
         return DeepSeekResult(

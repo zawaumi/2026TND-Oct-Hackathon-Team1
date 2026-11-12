@@ -1,4 +1,4 @@
-"""授業の評価をつくり、学習レポートの形にする（Issue #42）。
+"""授業の評価をつくり、学習レポートの形にする。
 
 - 授業を終えたとき（POST /sessions/{id}/finish/）に評価する。失敗しても、GET /evaluation/ のときにもう一度試す。
 - 1つの授業に評価は1つ。2回呼ばれても作り直さない。
@@ -22,7 +22,7 @@ from .scoring import CriterionSpec, Finding, aggregate
 logger = logging.getLogger(__name__)
 
 SCORE_LABEL = "ぴあとも独自の説明力スコア"
-ENGINE = "deepseek-findings"  # Jev（#28）ができたら、その評価候補に置き換える
+ENGINE = "deepseek-findings"  # Jev が使えるようになったら、その評価候補に置き換える
 MAX_NEXT_LESSONS = 3
 READY = {KnowledgeStatus.PRACTICING, KnowledgeStatus.MASTERED}
 

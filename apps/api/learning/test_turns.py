@@ -140,7 +140,7 @@ class TurnApiTests(TestCase):
 
 
 class PolicyTests(SimpleTestCase):
-    """#29：同じ入力なら同じ方針。未許可の action・授業の外の概念を出さない"""
+    """方針：同じ入力なら同じ方針。未許可の action・授業の外の概念を出さない"""
 
     def c(self, status="UNKNOWN", ready=True, id=103):
         return ConceptState(id=id, status=status, prerequisites_ready=ready)
@@ -167,7 +167,7 @@ class PolicyTests(SimpleTestCase):
 
 
 class ValidationTests(SimpleTestCase):
-    """#31：だめな出力を捨てる"""
+    """出力の検証：だめな出力を捨てる"""
 
     d = Decision(action="ask_why", concept_id=103, introduce=False)
 

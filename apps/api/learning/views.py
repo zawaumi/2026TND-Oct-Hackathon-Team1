@@ -27,7 +27,7 @@ def session_json(s):
 
 
 def summary_json(s):
-    """contracts/openapi.yaml の SessionSummary の形。点数は評価（#42）が済んでいなければ null"""
+    """contracts/openapi.yaml の SessionSummary の形。点数は評価が済んでいなければ null"""
     evaluation = getattr(s, "evaluation", None) if s.status == LearningSession.Status.FINISHED else None
     return {
         "id": s.id,
@@ -131,7 +131,7 @@ def _turn_result(outcome, request_id):
 
 
 class MessageView(APIView):
-    """POST /api/v1/sessions/{id}/messages/ 説明を送り、検証済みのぴあ友の応答を受け取る（#32）"""
+    """POST /api/v1/sessions/{id}/messages/ 説明を送り、検証済みのぴあ友の応答を受け取る"""
 
     permission_classes = [IsAuthenticated]
 
