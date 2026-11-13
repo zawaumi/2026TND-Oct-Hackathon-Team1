@@ -1,0 +1,13 @@
+{
+  "frozen_on": "2026-11-14",
+  "rubric_version": "draft-2026-11",
+  "note": "このデータを変更したら、check_data.py が失敗する。変更するときは、理由を記録して、この指紋を作り直す（採点を始めたあとは、変更しない）。",
+  "sha256": {
+    "conversations.json": "3b4bd8356f2ef2c6d0d133b03472dbca4972858052b7b8c2929c95dea0d76532",
+    "split.json": "8b9f611b2fe13bed7f13ba74c7fb9ad81f1da8727555b49d6d83e6049acdb015",
+    "induced.json": "fdf01e483910897e096cbdf7d27e85e78914d38bcf8510a7dc9093c88fa4ca73",
+    "score_sheet_tuning.csv": "7c087a587b7dcc7a73422743d8519f1f26c1b8f7fe1cd882e53979915bfa0bd0",
+    "score_sheet_evaluation.csv": "f670eea9515a9ed52cdcdb3e048822a1d08e3426f3912676739b3d43f689a797",
+    "score_sheet_induced.csv": "bc541a08a29e81d1f0c599d6608e85f2099b4d840c69b829fc0cd1d4a327d451"
+  }
+}
