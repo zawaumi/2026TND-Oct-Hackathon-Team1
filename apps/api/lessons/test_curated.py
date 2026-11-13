@@ -100,7 +100,9 @@ class DatasetTests(SimpleTestCase):
         self.assertTrue(any("ADR-028" in p for p in self.mutated(publish)))
 
     def test_review_rules(self):
-        self.assertTrue(self.mutated(lambda d: d["review"].update(status="approved")))  # レビュー者が空
+        self.assertTrue(
+            self.mutated(lambda d: d["review"].update(status="approved", math_reviewer=None, source_reviewer=None, reviewed_on=None))
+        )  # レビュー者が空
         self.assertTrue(
             self.mutated(lambda d: d["review"].update(status="approved", math_reviewer=d["review"]["author"], source_reviewer="b", reviewed_on="2026-11-13"))
         )  # 作った人が自分でレビュー
@@ -143,13 +145,25 @@ class LoadCommandTests(TestCase):
         self.assertEqual(Lesson.objects.get(title="等式の性質").curriculum_item.title, "（3）一元一次方程式")
 
     def test_publish_refused_without_review(self):
-        with self.assertRaises(CommandError):
-            run("--publish")
-        with self.assertRaises(CommandError):
-            run("--publish", "--allow-unreviewed")  # DEBUG=False（テスト）では使えない
-        with self.assertRaises(CommandError):
-            run("--allow-unreviewed")
+        # レビュー前（pending）のデータを用意する（本物のデータはレビュー済み）
+        data = copy.deepcopy(DATA)
+        data["review"].update(status="pending", math_reviewer=None, source_reviewer=None, reviewed_on=None)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "pending.json"
+            path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+            with self.assertRaises(CommandError):
+                run("--publish", "--file", str(path))
+            with self.assertRaises(CommandError):
+                run("--publish", "--allow-unreviewed", "--file", str(path))  # DEBUG=False（テスト）では使えない
+            with self.assertRaises(CommandError):
+                run("--allow-unreviewed", "--file", str(path))
         self.assertEqual(Lesson.objects.count(), 0)
+
+    def test_reviewed_data_publishes_the_three(self):
+        run("--publish")
+        published = set(Lesson.objects.filter(status=Lesson.Status.PUBLISHED).values_list("title", flat=True))
+        self.assertEqual(published, {"数と式", "一元一次方程式", "等式の性質", "方程式の解法", "移項"})
+        self.assertEqual(Lesson.objects.get(title="方程式の利用（文章題）").status, Lesson.Status.DRAFT)
 
     @override_settings(DEBUG=True)
     def test_allow_unreviewed_publishes_only_the_three_in_debug(self):
