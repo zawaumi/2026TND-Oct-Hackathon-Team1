@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 本番の成果物（静的出力 out/）にモックが混ざっていないか確かめる。
 // npm run build のあとに自動で動く（package.json の postbuild）。
-// もとは Shiori さんの #82（scripts/check-no-mock.mjs）。
+// もとは Shiori さんが作った scripts/check-no-mock.mjs。
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 

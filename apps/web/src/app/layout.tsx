@@ -24,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${notoSansJp.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {/* ログイン（#10）：ログインしていないと使えない画面はホームのログイン画面へ */}
+        {/* ログイン：ログインしていないと使えない画面はホームのログイン画面へ */}
         <AuthProvider>
           <AuthGate>{children}</AuthGate>
         </AuthProvider>
