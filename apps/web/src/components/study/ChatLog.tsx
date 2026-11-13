@@ -26,7 +26,7 @@ const ACTION_LABEL: Partial<Record<PeerResponse["action"], string>> = {
 function SmallAvatar() {
   return (
     <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-soft">
-      <PeerAvatar state="idle" size={44} decorative />
+      <PeerAvatar state="idle" size={44} decorative animated={false} />
     </span>
   );
 }
@@ -49,7 +49,8 @@ export const ChatLog = forwardRef<
       onScroll={onScroll}
       className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 lg:px-5 lg:py-2"
     >
-      <ol className="flex flex-col gap-3.5" role="log" aria-live="polite" aria-label="会話">
+      <div role="log" aria-live="polite" aria-label="会話">
+      <ol className="flex flex-col gap-3.5">
         {items.map((item) => {
           switch (item.kind) {
             case "peer": {
@@ -137,6 +138,7 @@ export const ChatLog = forwardRef<
           </li>
         )}
       </ol>
+      </div>
     </div>
   );
 });

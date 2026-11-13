@@ -8,6 +8,7 @@ import { STATUS_LABEL } from "@/components/KnowledgeState";
 import { Logo } from "@/components/Logo";
 import { api, ApiError, type ExerciseAttempt, type KnowledgeChange, type Lesson, type MessageResponse, type PeerKnowledge } from "@/lib/api/client";
 import { saveConversation, type ConversationLine } from "@/lib/conversationMemory";
+import { EventLedger, isMasteryTransition, masteryEventKey, type EventSource } from "@/lib/avatarEvents";
 import { newRequestId } from "@/lib/requestId";
 import { understandingPercent } from "@/lib/understanding";
 import { ChatLog, type ChatItem } from "./ChatLog";
@@ -63,6 +64,8 @@ export function StudyRoom() {
   const [notice, setNotice] = useState<string | null>(null);
   const [finishOpen, setFinishOpen] = useState(false);
   // 「問題を出す」：出題中・ぴあ友が解いている間は、入力欄とボタンを押せなくする（docs/04 の 5.4）
+  // いまの習得の演出のもとになった確定イベント。アバターは、これが変わったときだけ演出を再生する
+  const [avatarEvent, setAvatarEvent] = useState<string | null>(null);
   const [exercisePhase, setExercisePhase] = useState<ExercisePhase>(null);
   // 「問題を出す」の入力欄は、初めて開いたときに作り、そのあとは残す（入力中の式を消さない。数式の部品の読み込みも1回で済む）
   const [exerciseOpened, setExerciseOpened] = useState(false);
@@ -71,6 +74,8 @@ export function StudyRoom() {
   const nearBottom = useRef(true);
   const seenTurns = useRef(new Set<number>());
   const seenAttempts = useRef(new Set<number>());
+  // 習得の演出を出した確定イベント（turn_id・attempt.id と concept_id の組）。同じものは2度出さない
+  const masteryEvents = useRef(new EventLedger());
   const conceptsRef = useRef<ConceptView[]>([]);
   useEffect(() => {
     conceptsRef.current = concepts;
@@ -160,19 +165,26 @@ export function StudyRoom() {
   }, [items, sending]);
 
   /* ───── 知識の変化を画面に反映（教えた応答と、ぴあ友の解答の両方で使う） ───── */
-  const reflectChanges = useCallback((changes: KnowledgeChange[], keyBase: string) => {
+  const reflectChanges = useCallback((changes: KnowledgeChange[], source: EventSource) => {
     const label = (id: number) => conceptsRef.current.find((c) => c.id === id)?.label ?? `概念 ${id}`;
     const extra: ChatItem[] = [];
     let mastered: string | null = null;
+    let eventKey: string | null = null;
 
     for (const ch of changes) {
       if (ch.new_status === "MASTERED") {
+        // 習得の演出は、サーバーが返した「習得済みへの遷移」だけ。もともと習得済みなら、何も出さない
+        if (!isMasteryTransition(ch)) continue;
+        const key = masteryEventKey(source, ch.concept_id);
+        // 同じ確定イベントを2度受け取っても、お知らせと演出は1度だけ
+        if (!masteryEvents.current.claim(key)) continue;
         mastered = label(ch.concept_id);
-        extra.push({ kind: "mastery", key: `m${keyBase}-${ch.concept_id}`, text: `ぴあ友が「${mastered}」を習得しました！` });
+        eventKey = key;
+        extra.push({ kind: "mastery", key: `m-${key}`, text: `ぴあ友が「${mastered}」を習得しました！` });
       } else {
         extra.push({
           kind: "notice",
-          key: `n${keyBase}-${ch.concept_id}`,
+          key: `n-${source.kind}${source.id}-${ch.concept_id}`,
           text: `${label(ch.concept_id)}：${STATUS_LABEL[ch.new_status]}`,
         });
       }
@@ -185,7 +197,7 @@ export function StudyRoom() {
         }),
       );
     }
-    return { extra, mastered };
+    return { extra, mastered, eventKey };
   }, []);
 
   /* ───── 応答を画面に反映 ───── */
@@ -196,7 +208,7 @@ export function StudyRoom() {
       seenTurns.current.add(res.turn_id);
 
       const peer = res.peer_response;
-      const { extra, mastered } = reflectChanges(res.knowledge_changes, String(res.turn_id));
+      const { extra, mastered, eventKey } = reflectChanges(res.knowledge_changes, { kind: "turn", id: res.turn_id });
 
       setItems((prev) => [
         ...prev,
@@ -219,9 +231,11 @@ export function StudyRoom() {
       // mastery_success は、DRFが習得済みに更新したときだけ（docs/04 の 5.5）
       if (mastered) {
         setMasteredLabel(mastered);
+        setAvatarEvent(eventKey);
         setEmotion("mastery_success");
       } else {
         setMasteredLabel(null);
+        setAvatarEvent(null);
         setEmotion(peer.emotion === "mastery_success" ? "practice_success" : peer.emotion);
       }
     },
@@ -241,7 +255,7 @@ export function StudyRoom() {
       if (seenAttempts.current.has(attempt.id)) return;
       seenAttempts.current.add(attempt.id);
 
-      const { extra, mastered } = reflectChanges(attempt.knowledge_changes ?? [], `a${attempt.id}`);
+      const { extra, mastered, eventKey } = reflectChanges(attempt.knowledge_changes ?? [], { kind: "attempt", id: attempt.id });
       let remaining: number | null = null;
       try {
         const k = await api.getPeerKnowledge();
@@ -258,9 +272,11 @@ export function StudyRoom() {
       // mastery_success は、DRFが習得済みに更新したときだけ（docs/04 の 5.5）
       if (mastered) {
         setMasteredLabel(mastered);
+        setAvatarEvent(eventKey);
         setEmotion("mastery_success");
       } else {
         setMasteredLabel(null);
+        setAvatarEvent(null);
         setEmotion(attempt.result === "correct" ? "practice_success" : attempt.result === "blocked" ? "question" : "idle");
       }
     },
@@ -422,7 +438,7 @@ export function StudyRoom() {
       <main className="flex min-h-0 flex-1 flex-col gap-3 p-3 lg:grid lg:grid-cols-[minmax(300px,30%)_1fr] lg:gap-5 lg:p-7">
         {/* 左列（PC） */}
         <aside className="hidden min-h-0 flex-col gap-4 overflow-y-auto lg:flex">
-          <PeerCard emotion={shownEmotion} masteredLabel={masteredLabel} />
+          <PeerCard emotion={shownEmotion} masteredLabel={masteredLabel} eventKey={avatarEvent} />
           <section className="rounded-card bg-card px-5 py-4.5">
             <UnderstandingBar percent={percent} />
           </section>
@@ -434,6 +450,7 @@ export function StudyRoom() {
           <PeerSummaryMobile
             emotion={shownEmotion}
             masteredLabel={masteredLabel}
+            eventKey={avatarEvent}
             percent={percent}
             concepts={concepts}
             currentId={currentId}

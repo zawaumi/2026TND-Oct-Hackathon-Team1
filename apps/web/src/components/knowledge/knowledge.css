@@ -1,0 +1,12 @@
+/* React Flow の「React Flow」リンク（出典の表示）を、押しやすい大きさにする（24px 以上） */
+.react-flow__attribution a {
+  display: inline-block;
+  padding: 8px 10px;
+}
+
+/* キーボードでノードにフォーカスしたとき、はっきりした枠を出す（選んだノードの黄色の枠とは別） */
+.react-flow__node:focus-visible {
+  outline: 3px solid #2f55d4 !important;
+  outline-offset: 5px;
+  border-radius: 22px;
+}
