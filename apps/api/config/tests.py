@@ -62,6 +62,10 @@ class ProductionSettingsTests(SimpleTestCase):
         self.assertEqual(s.DATABASES["default"]["HOST"], "/cloudsql/project:asia-northeast1:piatomo-db")
         self.assertTrue(s.SESSION_COOKIE_SECURE and s.CSRF_COOKIE_SECURE)
 
+    def test_admin_is_off_by_default(self):
+        self.assertFalse(self.load(self.ENV).ADMIN_ENABLED)
+        self.assertTrue(self.load({**self.ENV, "DJANGO_ADMIN_ENABLED": "true"}).ADMIN_ENABLED)
+
     def test_wildcard_host_is_rejected(self):
         with self.assertRaises(ImproperlyConfigured):
             self.load({**self.ENV, "DJANGO_ALLOWED_HOSTS": "*"})
@@ -71,3 +75,16 @@ class ProductionSettingsTests(SimpleTestCase):
         del env["DJANGO_SECRET_KEY"]
         with self.assertRaises(ImproperlyConfigured):
             self.load(env)
+
+
+class AdminUrlTests(SimpleTestCase):
+    def test_admin_url_only_when_enabled(self):
+        from django.urls import URLResolver
+
+        from config.urls import build_urlpatterns
+
+        def has_admin(patterns):
+            return any(isinstance(p, URLResolver) and str(p.pattern) == "admin/" for p in patterns)
+
+        self.assertFalse(has_admin(build_urlpatterns(False)))
+        self.assertTrue(has_admin(build_urlpatterns(True)))

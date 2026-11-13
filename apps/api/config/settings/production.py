@@ -35,7 +35,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
-# 管理画面（/admin/）にログインするときの呼び出し元。例: https://tnd2026-oct-hackathon.web.app
+# 管理画面（/admin/）は、本番では既定で出さない（Cloud Run の *.run.app から直接見えてしまうため）。
+# どうしても使うときだけ DJANGO_ADMIN_ENABLED=true にし、使い終わったら外す
+ADMIN_ENABLED = os.environ.get("DJANGO_ADMIN_ENABLED", "").strip().lower() == "true"
+# 管理画面にログインするときの呼び出し元（ADMIN_ENABLED のときだけ使う）。例: https://tnd2026-oct-hackathon.web.app
 CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 # Cloud Run は標準出力をログに集める。会話の本文や鍵はログに出さない（各モジュールの方針）

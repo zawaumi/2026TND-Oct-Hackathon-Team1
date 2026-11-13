@@ -119,6 +119,7 @@ gcloud run deploy $SERVICE --source apps/api --region $REGION --service-account 
   --set-env-vars $ENVS --set-secrets $SECRETS
 ```
 
+- 管理画面（`/admin/`）は、本番では出しません（`*.run.app` の URL から直接見えてしまうため）。どうしても使うときだけ、`$ENVS` に `;DJANGO_ADMIN_ENABLED=true` を足して載せ直し、使い終わったら外して載せ直します。
 - `--allow-unauthenticated`：だれでも呼べるようにします。ログインの確認は API 自身が Firebase の ID トークンで行います（`apps/api/accounts/authentication.py`）。
 - 最小インスタンスは 0 です（使わないときは費用がかからない代わりに、しばらく使っていないと最初の1回が数秒遅い）。発表の直前に `gcloud run services update $SERVICE --min-instances 1` にし、終わったら 0 に戻すと安心です。
 
