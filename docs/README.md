@@ -22,6 +22,7 @@
 | [08_decisions_and_open_items.md](08_decisions_and_open_items.md) | 設計判断ログ、未検証事項、版の履歴 | 全員 |
 | [09_risks_traceability.md](09_risks_traceability.md) | リスク、要件→実装→検証の対応 | 全員 |
 | [deploy.md](deploy.md) | 本番公開の手順（Firebase Hosting・Cloud Run・Cloud SQL） | 公開する人 |
+| [screens.md](screens.md) | 画面ガイド（画面ごとの説明とスクリーンショット） | 全員 |
 | [submission/](submission/README.md) | 最終提出の資料（実装状況と未達の記録、デモの台本、発表資料の構成案） | 全員 |
 | [e2e_acceptance.md](e2e_acceptance.md) | MVPの受入試験の記録（API の自動試験と、画面の通し） | 全員 |
 | [a11y_check.md](a11y_check.md) | レスポンシブ・アクセシビリティの確認記録 | Web |

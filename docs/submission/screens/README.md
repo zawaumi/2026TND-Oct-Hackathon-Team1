@@ -12,6 +12,7 @@
 | `06-pc-mastery.png` | 習得の演出（星の目のアバターと、習得のお知らせ） |
 | `07-pc-report.png` | 学習レポート |
 | `08-pc-knowledge-map.png` | 知識マップ（「移項」を選択） |
+| `09-avatar-states.png` | ぴあ友の6つの表情（待つ・聞く・考える・質問する・できた・習得した。動きを止めた絵） |
 | `11-sp-home.png` | スマホ：ホーム |
 | `12-sp-lessons.png` | スマホ：教材選択 |
 | `13-sp-exercise-verified.png` | スマホ：問題を出す |
