@@ -16,6 +16,8 @@
  * - notFound     … 授業まわりがすべて 404
  * - pending      … 送信・解答・評価がずっと「処理中」（202）のまま
  * - networkError … すべて通信エラー
+ * - noSessions   … 授業がまだ1つもない（ホームの吹き出しが「はじめまして！」になる）
+ * - slowSessions … 授業の一覧だけ 3 秒かかる（ホームの読み込み中の表示を確かめる）
  * - newUser      … 初回設定がまだの人（初回設定以外のAPIは 403 ONBOARDING_REQUIRED。登録できたら ふつうに戻る）
  * ぴあ友の解答の結果だけを決めるときは ?mock_attempt=auto|correct|duplicate_form|blocked|unverified
  *
@@ -49,7 +51,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ───────── シナリオ（?mock=…） ───────── */
 
-const SCENARIOS = ["normal", "emptyLessons", "unauthorized", "notFound", "pending", "networkError", "newUser"] as const;
+const SCENARIOS = ["normal", "emptyLessons", "unauthorized", "notFound", "pending", "networkError", "newUser", "noSessions", "slowSessions"] as const;
 type Scenario = (typeof SCENARIOS)[number];
 const SCENARIO_KEY = "piatomo.mock.scenario";
 const ATTEMPT_KEY = "piatomo.mock.attempt";
@@ -529,6 +531,14 @@ export const mockClient: ApiClient = new Proxy(baseMock, {
       if (scenario === "notFound" && SESSION_METHODS.has(name as keyof ApiClient)) {
         await wait(200);
         throw new ApiError(404, "NOT_FOUND", "授業が見つかりません。");
+      }
+      if (scenario === "noSessions" && name === "listSessions") {
+        await wait(200);
+        return [];
+      }
+      if (scenario === "slowSessions" && name === "listSessions") {
+        await wait(3000);
+        return method.apply(target, args);
       }
       if (scenario === "emptyLessons" && name === "getLessons") {
         await wait(200);

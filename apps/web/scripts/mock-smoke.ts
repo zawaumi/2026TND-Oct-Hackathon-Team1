@@ -4,6 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { mockClient as api, setMockScenario } from "../src/lib/api/mock";
+import { lastLessonId, loadRecent } from "../src/lib/home";
 import { ApiError, isNetworkError, isNotFound, isOnboardingRequired, isUnauthorized } from "../src/lib/api/types";
 
 const RID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -112,6 +113,24 @@ async function main() {
   // #neterr：1回目だけ通信エラー（同じ入力でもう一度押せば成功する）
   await assert.rejects(api.completeOnboarding({ ...signup, nickname: "#neterr" }), isNetworkError);
   assert.equal((await api.completeOnboarding({ ...signup, nickname: "#neterr" })).profile.nickname, "#neterr");
+  // ホーム：前回の授業の、最後の小単元（docs/04 の 3.1）
+  setMockScenario(null);
+  assert.equal(lastLessonId([]), null);
+  const base = { id: 1, status: "finished" as const, mode: "preset" as const, started_at: "2026-11-01T00:00:00+09:00" };
+  assert.equal(lastLessonId([{ ...base, lesson_ids: [2, 3] }, { ...base, id: 2, lesson_ids: [9] }]), 3); // 新しい授業の、複数あれば最後
+  assert.equal(lastLessonId([{ ...base, lesson_ids: [] }]), null);
+  // この前に小単元 [2, 3] の授業を作ってあるので、いちばん新しい授業の最後の小単元は 3（移項）
+  assert.deepEqual(await loadRecent(api), { kind: "last", title: "移項" });
+  setMockScenario("noSessions");
+  assert.deepEqual(await loadRecent(api), { kind: "none" }); // 授業がまだない
+  setMockScenario("unauthorized");
+  await assert.rejects(loadRecent(api), isUnauthorized);
+  setMockScenario("networkError");
+  await assert.rejects(loadRecent(api), isNetworkError);
+  // 小単元が見つからない（404）ときは、前回の内容を出さない
+  const lost = { listSessions: async () => [{ ...base, lesson_ids: [999] }], getLesson: (id: number) => api.getLesson(id) };
+  setMockScenario(null);
+  assert.deepEqual(await loadRecent(lost), { kind: "unknown" });
   setMockScenario(null);
 
   console.log("SMOKE_OK");
