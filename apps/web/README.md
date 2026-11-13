@@ -58,6 +58,24 @@ URL に `?mock=…` を付けると、画面全体の状態を切り替えられ
 | `#neterr` | 1回目だけ通信エラー。「もう一度送る」で同じ送信IDのまま再送する |
 | `#mastered` | 「移項」が習得済みになる（帯とアバターの確認用） |
 
+### 「問題を出す」（/study/?session=1 で「問題を出す」を選ぶ）
+- 数式は MathLive（`mathlive`）で入力する。ブラウザだけで動くため、**「問題を出す」を初めて開いたときに読み込む**（`src/components/study/MathInput.tsx`）。フォントは `public/mathlive/fonts` に置く。`npm run dev`・`npm run build` の前に、`scripts/copy-mathlive-assets.mjs` が自動でコピーする（コピーしたものは Git に入れない）。
+- 画面のキーボードは出さない（会話が隠れるため）。記号のキー（x ＋ － × ÷ ＝ 分数 かっこ）は画面側で用意している。数式の入力欄が読み込めないとき、または「文字で入力する」を押したときは、ふつうの文字入力（例：`x+3=7`）に切り替わる。読み上げ用の言葉は、入力した式の下に出る。
+- 送る前の形式チェックは `src/lib/mathInput.ts`。決まった記号以外（`\href` など）、空いている部分、かっこの数のずれ、長すぎる式は送らない。**一次方程式かどうかの判定はしない**（API が VERIFIED・PROVISIONAL・UNSUPPORTED を返す）。LaTeX は画面で評価せず、文字として出す。API が返す式（`steps[].expr`）も、文字に直して出すだけで、HTML にはしない。
+- 流れ：式を入力 → 形式チェック → `POST /sessions/{id}/exercises/` → VERIFIED と PROVISIONAL は `POST /exercises/{id}/attempt/` で解答を取る（処理中の 202 は同じ `request_id` で取り直す）。UNSUPPORTED は理由と入力し直しの案内を出し、式は消さない。通信に失敗したら「もう一度」で、**同じ `request_id`** で再送する。送信中・解答待ちはボタンを押せなくし、ぴあ友を「考え中」にする。
+- 結果の文言は `src/lib/exercise.ts`（docs/04 の 5.4）。`npm run test:math` で、形式チェックと文言を確かめられる。
+- 対象の概念の初期値は「いま教えている概念」。選び直せる。
+- モックで試す：`x+3=7`（対応）、`x^2=4`（UNSUPPORTED）、分数キーで `x/2=3`（止まる）。1回目の正解のあと、同じ形（`x+5=9`）は「前と同じ形」になる。`?mock=networkError` は授業ごと読み込めなくなるので、通信失敗は、授業を開いたあとに、開発者ツールのコンソールで `sessionStorage.setItem("piatomo.mock.scenario","networkError")` を実行して試す（`normal` で戻す）。
+
+### ぴあ友のアバター
+- 絵は SVG、動きは Motion for React（`motion/react`）。公開の部品は `src/components/PeerAvatar.tsx`、中身（顔・まわりの飾り・動きの設定）は `src/components/avatar/`。
+- 6つの状態と動き：`idle` ゆっくり上下・ときどきまばたき／`listening` うなずく・波／`thinking` 頭がゆれる・点が順に光る／`question` 首をかしげる・「？」がはずむ／`practice_success` 1回だけ跳ねる・きらきら／`mastery_success` 1回だけ大きく跳ねる・星の目・紙吹雪。
+- **表情は知識の状態とは別。** `mastery_success` は、サーバーが返した `knowledge_changes` が「習得済みへの遷移」（`old_status` が `MASTERED` でなく、`new_status` が `MASTERED`）のときだけ。ぴあ友の発言（`emotion`）や「分かった」では出さない（発言が `mastery_success` でも、遷移がなければ `practice_success` にする）。
+- **同じ確定イベントは1回だけ。** API に `event_id` はないので、教えた応答は `turn_id` と `concept_id` の組、ぴあ友の解答は `attempt.id` と `concept_id` の組を識別子にする（`src/lib/avatarEvents.ts`。契約は変えていない）。同じ識別子を2度受け取っても、習得のお知らせも演出も1回だけ。覚えておくのは、授業の画面を開いている間（メモリの中）、最大200件で、超えたら古いものから忘れる。再読み込みのあとは、サーバーから同じイベントが届かないので、持ち越さない。
+- アバターは、状態が変わったときか、`eventKey` が変わったときだけ、動きを最初から再生する。同じ状態・同じ `eventKey` のまま描き直しても、再生しない。API に `event_id` を足す場合は、契約を先に更新して、識別子をそれに置き換える。
+- `prefers-reduced-motion` では動かさず、止めた絵で出す。頭の傾き・「？」・点・星・紙吹雪の絵で、状態は絵でも分かる。アバターの下の一言（文字）も、そのまま出る。会話の小さなアイコンなど、動かしたくないところは `animated={false}`。
+- `npm run test:avatar` で、確定イベントの判定と重複の抑止を確かめられる。
+
 ### 学習レポート（/report/?session=...）をモックで試す
 - 開くと、はじめに「評価中…」が出て、少したつとレポートが出る。
 - 学習ルームから「授業を終える」で来ると、その授業の会話（このタブのメモリだけにある）から「ぴあ友がつまずいたところ」が出る。直接開いたときや再読み込みしたあとは出ない。

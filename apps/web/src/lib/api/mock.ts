@@ -95,6 +95,8 @@ const CONCEPTS: Omit<ConceptNode, "status">[] = [
   { id: 101, code: "M1-EQ-PROP", label: "等式の性質", description: "両辺に同じ操作をしても等式は成り立つ" },
   { id: 102, code: "M1-EQ-SOLVE", label: "方程式の解法", description: "等式の性質を使って x = の形にする" },
   { id: 103, code: "M1-EQ-TRANS", label: "移項", description: "項の符号を変えて反対側の辺へ移す" },
+  // 文章題の概念は、小単元を公開しなくても、知識マップに未習として出す（ADR-028）
+  { id: 104, code: "M1-EQ-WORD", label: "方程式の利用（文章題）", description: "文章の数量の関係を方程式で表して、解く。" },
 ];
 
 let knowledgeVersion = 7;
@@ -451,14 +453,33 @@ const baseMock: ApiClient = {
     await wait(150);
     return { knowledge_version: knowledgeVersion, items: [...knowledge.values()].map((k) => ({ ...k })) };
   },
-  async getKnowledgeGraph() {
+  async getKnowledgeGraph(lessonId?: number) {
     await wait(150);
+    const edges = [
+      { source: 101, target: 102, relation: "prerequisite" as const },
+      { source: 101, target: 103, relation: "prerequisite" as const },
+      { source: 102, target: 104, relation: "prerequisite" as const },
+    ];
+    // 小単元を指定したら、その小単元の概念と、その前提だけ（実APIと同じ考え方）
+    let scope: Set<number> | null = null;
+    if (lessonId != null) {
+      const lesson = LESSONS.find((l) => l.id === lessonId);
+      if (!lesson) throw new ApiError(404, "NOT_FOUND", "小単元が見つかりません。");
+      scope = new Set(lesson.concept_ids);
+      for (let grew = true; grew; ) {
+        grew = false;
+        for (const e of edges) {
+          if (scope.has(e.target) && !scope.has(e.source)) {
+            scope.add(e.source);
+            grew = true;
+          }
+        }
+      }
+    }
+    const inScope = (id: number) => scope === null || scope.has(id);
     return {
-      nodes: CONCEPTS.map((c) => ({ ...c, status: knowledge.get(c.id)?.status ?? "UNKNOWN" })),
-      edges: [
-        { source: 101, target: 102, relation: "prerequisite" },
-        { source: 101, target: 103, relation: "prerequisite" },
-      ],
+      nodes: CONCEPTS.filter((c) => inScope(c.id)).map((c) => ({ ...c, status: knowledge.get(c.id)?.status ?? ("UNKNOWN" as const) })),
+      edges: edges.filter((e) => inScope(e.source) && inScope(e.target)),
     };
   },
   async postMessage(sessionId, body): Promise<TurnResult> {

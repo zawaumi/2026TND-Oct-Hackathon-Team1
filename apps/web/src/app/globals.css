@@ -41,3 +41,9 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* 数式の入力欄（MathLive）：自前の記号キーを使うので、画面のキーボードとメニューのボタンは出さない */
+math-field::part(virtual-keyboard-toggle),
+math-field::part(menu-toggle) {
+  display: none;
+}

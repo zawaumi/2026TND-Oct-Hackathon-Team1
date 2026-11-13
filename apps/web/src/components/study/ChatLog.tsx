@@ -2,13 +2,18 @@
 
 import { forwardRef } from "react";
 import { PeerAvatar } from "@/components/PeerAvatar";
-import type { PeerResponse } from "@/lib/api/client";
+import type { ExerciseAttempt, PeerResponse } from "@/lib/api/client";
+import { ProblemBubble, SolutionCard } from "./ExerciseItems";
 
 export type ChatItem =
   | { kind: "peer"; key: string; text: string; action?: PeerResponse["action"] }
   | { kind: "user"; key: string; text: string; requestId: string; state: "sending" | "sent" | "failed" }
   | { kind: "notice"; key: string; text: string }
-  | { kind: "mastery"; key: string; text: string };
+  | { kind: "mastery"; key: string; text: string }
+  /** 「問題を出す」で出した問題（latex は形式チェックを通った式。文字として出す） */
+  | { kind: "problem"; key: string; latex: string; note?: string }
+  /** ぴあ友の解答。remaining は「習得まであと〇問」（分からないときは null） */
+  | { kind: "solution"; key: string; attempt: ExerciseAttempt; remaining: number | null };
 
 /** 質問の種類の札（docs/04 の 5.3）。札を付けない action は載せない */
 const ACTION_LABEL: Partial<Record<PeerResponse["action"], string>> = {
@@ -21,7 +26,7 @@ const ACTION_LABEL: Partial<Record<PeerResponse["action"], string>> = {
 function SmallAvatar() {
   return (
     <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-soft">
-      <PeerAvatar state="idle" size={44} decorative />
+      <PeerAvatar state="idle" size={44} decorative animated={false} />
     </span>
   );
 }
@@ -34,15 +39,18 @@ export const ChatLog = forwardRef<
     onRetry: (requestId: string) => void;
     retryDisabled: boolean;
     onScroll: () => void;
+    /** 解答で「教えるモードで説明する」が押された */
+    onTeach?: () => void;
   }
->(function ChatLog({ items, thinking, onRetry, retryDisabled, onScroll }, ref) {
+>(function ChatLog({ items, thinking, onRetry, retryDisabled, onScroll, onTeach }, ref) {
   return (
     <div
       ref={ref}
       onScroll={onScroll}
       className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 lg:px-5 lg:py-2"
     >
-      <ol className="flex flex-col gap-3.5" role="log" aria-live="polite" aria-label="会話">
+      <div role="log" aria-live="polite" aria-label="会話">
+      <ol className="flex flex-col gap-3.5">
         {items.map((item) => {
           switch (item.kind) {
             case "peer": {
@@ -90,6 +98,19 @@ export const ChatLog = forwardRef<
                   )}
                 </li>
               );
+            case "problem":
+              return (
+                <li key={item.key} className="flex flex-col items-end pl-12 lg:pl-32">
+                  <ProblemBubble latex={item.latex} note={item.note} />
+                </li>
+              );
+            case "solution":
+              return (
+                <li key={item.key} className="flex items-start gap-2.5 pr-3 lg:pr-16">
+                  <SmallAvatar />
+                  <SolutionCard attempt={item.attempt} remaining={item.remaining} onTeach={onTeach} />
+                </li>
+              );
             case "notice":
               return (
                 <li key={item.key} className="flex justify-center">
@@ -117,6 +138,7 @@ export const ChatLog = forwardRef<
           </li>
         )}
       </ol>
+      </div>
     </div>
   );
 });
