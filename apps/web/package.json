@@ -13,9 +13,11 @@
     "test:mock": "tsx scripts/mock-smoke.ts",
     "gen:api": "openapi-typescript ../../contracts/openapi.yaml -o src/lib/api/schema.d.ts",
     "test:math": "tsx scripts/math-input-test.ts",
-    "test:avatar": "tsx scripts/avatar-events-test.ts"
+    "test:avatar": "tsx scripts/avatar-events-test.ts",
+    "test:knowledge": "tsx scripts/knowledge-map-test.ts"
   },
   "dependencies": {
+    "@xyflow/react": "^12.12.1",
     "firebase": "^12.19.0",
     "mathlive": "^0.111.4",
     "motion": "^14.12.0",

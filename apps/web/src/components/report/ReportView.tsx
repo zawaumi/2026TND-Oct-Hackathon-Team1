@@ -299,7 +299,10 @@ function ScoreCard({ report, comment }: { report: EvaluationReport; comment: str
         <div className="min-w-0">
           <h2 className="text-[17px] font-bold lg:text-[18px]">あなたの授業は…</h2>
           {scored ? (
-            <p className="mt-1 flex items-end" aria-label={`${report.score_label}：100点中${report.total_score}点`}>
+            <p className="mt-1 flex items-end">
+              <span className="sr-only">
+                {report.score_label}：100点中{report.total_score}点
+              </span>
               <span className="text-[64px] leading-none font-black tracking-tight text-[#2B3FE0] lg:text-[72px]" aria-hidden="true">
                 {report.total_score}
               </span>
