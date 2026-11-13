@@ -21,6 +21,7 @@
 | [07_delivery_plan.md](07_delivery_plan.md) | マイルストーン、担当分担、ブランチ、CI/CD | 全員 |
 | [08_decisions_and_open_items.md](08_decisions_and_open_items.md) | 設計判断ログ、未検証事項、版の履歴 | 全員 |
 | [09_risks_traceability.md](09_risks_traceability.md) | リスク、要件→実装→検証の対応 | 全員 |
+| [deploy.md](deploy.md) | 本番公開の手順（Firebase Hosting・Cloud Run・Cloud SQL） | 公開する人 |
 | [diagrams/](diagrams/) | Mermaidの構成図・ER図・シーケンス図 | 全員 |
 | [../contracts/openapi.yaml](../contracts/openapi.yaml) | DRF APIの契約（OpenAPI 3.0.3） | API・Web |
 | [../contracts/example_lesson.json](../contracts/example_lesson.json) | 小単元・概念・採点規準のサンプル（架空） | API・AI |

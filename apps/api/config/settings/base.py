@@ -23,6 +23,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     # 開発中に画面（localhost:3000）から API を呼べるようにする（config/cors.py）
     "config.cors.SimpleCorsMiddleware",
+    # 本人だけの応答を CDN（Firebase Hosting）にキャッシュさせない（config/cache.py）
+    "config.cache.ApiNoStoreMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -86,3 +88,6 @@ REST_FRAMEWORK = {
 
 # 画面から API を直接呼んでよい場所（開発用）。本番は Hosting の転送で同じ場所に見せるので空でよい
 CORS_ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
+# 管理画面（/admin/）を出すか。開発では出す。本番は production.py で既定を「出さない」にする
+ADMIN_ENABLED = True
