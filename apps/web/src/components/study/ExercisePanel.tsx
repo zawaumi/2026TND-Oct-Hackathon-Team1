@@ -248,7 +248,7 @@ export function ExercisePanel({
           ぴあ友に解いてもらう問題の式
         </span>
         <div
-          className={`rounded-2xl border bg-card px-3 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30 ${
+          className={`rounded-2xl border bg-card px-3 focus-within:border-primary focus-within:ring-[3px] focus-within:ring-primary/50 ${
             problem && problem.kind !== "network" ? "border-danger" : "border-[#CDD3EA]"
           } ${locked ? "bg-[#F6F7FC]" : ""}`}
         >
@@ -380,7 +380,7 @@ export function ExercisePanel({
               type="button"
               disabled={locked}
               onClick={() => switchMode(inputMode === "math" ? "text" : "math")}
-              className="inline-flex min-h-10 shrink-0 items-center text-[12.5px] font-bold text-link underline underline-offset-2 disabled:opacity-50 lg:min-h-0"
+              className="inline-flex min-h-10 shrink-0 items-center text-[12.5px] font-bold text-link underline underline-offset-2 disabled:opacity-50 lg:min-h-6"
             >
               {inputMode === "math" ? "文字で入力する" : "数式の入力欄に戻す"}
             </button>

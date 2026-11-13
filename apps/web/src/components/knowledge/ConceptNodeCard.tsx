@@ -26,7 +26,7 @@ export function ConceptNodeCard({ data, selected }: NodeProps<ConceptFlowNode>) 
       style={{ width: data.width, height: data.height }}
       className={`flex flex-col justify-center rounded-[18px] px-3.5 py-2 ${NODE_STYLE[data.status]} ${
         selected ? "outline-[4px] outline-offset-2 outline-[#F6C343]" : ""
-      } cursor-pointer [.react-flow__node:focus-visible_&]:ring-[3px] [.react-flow__node:focus-visible_&]:ring-link [.react-flow__node:focus-visible_&]:ring-offset-2`}
+      } cursor-pointer`}
     >
       <Handle type="target" position={lr ? Position.Left : Position.Top} style={HIDDEN} isConnectable={false} />
       <p className="text-[15px] leading-tight font-bold break-words">{data.label}</p>
