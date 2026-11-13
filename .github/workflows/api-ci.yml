@@ -85,7 +85,7 @@ jobs:
       - name: Validate OpenAPI
         run: openapi-spec-validator contracts/openapi.yaml
 
-  # コンテナを作れるか（Cloud Run への配備 #57 で使う）
+  # コンテナを作れるか（Cloud Run への配備で使う）
   container:
     runs-on: ubuntu-latest
     steps:
