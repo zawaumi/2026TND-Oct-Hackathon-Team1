@@ -7,15 +7,15 @@ import { useAuth } from "./AuthProvider";
 /**
  * ログインしていないと使えない画面を守る。
  * ホーム（/）はログイン画面を兼ねる（docs/04 の 2）ので、そこだけは通す。
- * それ以外の画面でログインしていない・ログインが切れた（401）ときは、ホームへ移り、
- * ログインのあとに元の画面へ戻れるよう ?next= を付ける（docs/04 の 10）。
+ * それ以外の画面でログインしていない・ログインが切れた（401）・初回設定がまだ（403 ONBOARDING_REQUIRED）
+ * のときは、ホームへ移り、ログインや初回設定のあとに元の画面へ戻れるよう ?next= を付ける（docs/04 の 9・10）。
  */
 export function AuthGate({ children }: { children: ReactNode }) {
-  const { user, expired } = useAuth();
+  const { user, expired, onboardingRequired } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const isHome = pathname === "/";
-  const blocked = !isHome && (user === null || expired);
+  const blocked = !isHome && (user === null || expired || onboardingRequired);
 
   useEffect(() => {
     if (!blocked) return;

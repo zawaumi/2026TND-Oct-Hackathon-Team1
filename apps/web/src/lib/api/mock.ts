@@ -7,6 +7,7 @@
  * - "#409"    … 状態の競合（409）を返す
  * - "#neterr" … 1回目だけ通信エラー。同じ request_id で再送すると届く
  * - "#mastered" … 「移項」が習得済みになる（帯とアバターの確認用）
+ * - ニックネームに "#neterr" … 初回登録の1回目だけ通信エラー（入力が残ることの確認用）
  *
  * 画面全体の状態を切り替えるシナリオ（URL に ?mock=… を付ける。ページを移っても続く。?mock=normal で戻す）：
  * - normal       … ふつうの動き
@@ -15,6 +16,9 @@
  * - notFound     … 授業まわりがすべて 404
  * - pending      … 送信・解答・評価がずっと「処理中」（202）のまま
  * - networkError … すべて通信エラー
+ * - noSessions   … 授業がまだ1つもない（ホームの吹き出しが「はじめまして！」になる）
+ * - slowSessions … 授業の一覧だけ 3 秒かかる（ホームの読み込み中の表示を確かめる）
+ * - newUser      … 初回設定がまだの人（初回設定以外のAPIは 403 ONBOARDING_REQUIRED。登録できたら ふつうに戻る）
  * ぴあ友の解答の結果だけを決めるときは ?mock_attempt=auto|correct|duplicate_form|blocked|unverified
  *
  * このファイルは NEXT_PUBLIC_API_MOCK=true か開発中のときだけ読み込まれる（client.ts）。
@@ -47,7 +51,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /* ───────── シナリオ（?mock=…） ───────── */
 
-const SCENARIOS = ["normal", "emptyLessons", "unauthorized", "notFound", "pending", "networkError"] as const;
+const SCENARIOS = ["normal", "emptyLessons", "unauthorized", "notFound", "pending", "networkError", "newUser", "noSessions", "slowSessions"] as const;
 type Scenario = (typeof SCENARIOS)[number];
 const SCENARIO_KEY = "piatomo.mock.scenario";
 const ATTEMPT_KEY = "piatomo.mock.attempt";
@@ -260,6 +264,8 @@ const countedForms = new Map<number, Set<string>>(); // 概念 → 習得の回�
 let nextExerciseId = 201;
 let nextAttemptId = 301;
 let onboarded = true;
+let newUserDone = false; // newUser シナリオで、初回設定が済んだか
+let onboardingNetErrDone = false; // ニックネームの #neterr を、1回だけ通信エラーにするため
 
 /** 数字を n に置き換えた「問題の形」。同じ形の問題は習得の回数に入れない（duplicate_form） */
 const formOf = (latex: string) => latex.replace(/\s+/g, "").replace(/\d+/g, "n");
@@ -327,7 +333,16 @@ function makeAttempt(ex: MockExercise): ExerciseAttempt {
 const baseMock: ApiClient = {
   async completeOnboarding(body) {
     await wait(300);
-    const created = !onboarded;
+    // 実APIと同じく、同意がなければ登録しない（400）
+    if (body.consent_confirmed !== true) throw new ApiError(400, "CONSENT_REQUIRED", "説明を読んで、同意のチェックを入れてください。");
+    if (body.nickname.includes("#neterr") && !onboardingNetErrDone) {
+      onboardingNetErrDone = true;
+      throw new ApiError(0, "NETWORK_ERROR", "通信できませんでした");
+    }
+    const isNewUserScenario = currentScenario() === "newUser";
+    const first = isNewUserScenario && !newUserDone;
+    if (isNewUserScenario) newUserDone = true;
+    const created = first || !onboarded;
     onboarded = true;
     Object.assign(PROFILE, { nickname: body.nickname, school_level: body.school_level, grade: body.grade, onboarding_completed: true });
     return { created, profile: { ...PROFILE } };
@@ -509,9 +524,21 @@ export const mockClient: ApiClient = new Proxy(baseMock, {
         await wait(200);
         throw new ApiError(401, "UNAUTHORIZED", "ログインしてください。");
       }
+      if (scenario === "newUser" && !newUserDone && name !== "completeOnboarding") {
+        await wait(200);
+        throw new ApiError(403, "ONBOARDING_REQUIRED", "初回設定をしてください。");
+      }
       if (scenario === "notFound" && SESSION_METHODS.has(name as keyof ApiClient)) {
         await wait(200);
         throw new ApiError(404, "NOT_FOUND", "授業が見つかりません。");
+      }
+      if (scenario === "noSessions" && name === "listSessions") {
+        await wait(200);
+        return [];
+      }
+      if (scenario === "slowSessions" && name === "listSessions") {
+        await wait(3000);
+        return method.apply(target, args);
       }
       if (scenario === "emptyLessons" && name === "getLessons") {
         await wait(200);

@@ -49,6 +49,9 @@ export class ApiError extends Error {
 export const isUnauthorized = (e: unknown) => e instanceof ApiError && e.status === 401;
 /** 見つからない・本人のものではない（404） */
 export const isNotFound = (e: unknown) => e instanceof ApiError && e.status === 404;
+/** ログインはしているが、初回設定がまだ（403 ONBOARDING_REQUIRED）→ 初回設定の画面へ（docs/04 の 9） */
+export const isOnboardingRequired = (e: unknown) =>
+  e instanceof ApiError && e.status === 403 && e.code === "ONBOARDING_REQUIRED";
 /** 通信できなかった（応答がない）→「通信できませんでした」と「もう一度」 */
 export const isNetworkError = (e: unknown) => e instanceof ApiError && e.status === 0;
 

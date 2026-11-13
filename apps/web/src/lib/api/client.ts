@@ -2,6 +2,7 @@ import {
   ApiError,
   type ApiClient,
   type EvaluationReport,
+  isOnboardingRequired,
   type ExerciseAttempt,
   type Profile,
   type Lesson,
@@ -28,6 +29,12 @@ export function setIdTokenProvider(fn: () => Promise<string | null>) {
 let onUnauthorized: () => void = () => {};
 export function setUnauthorizedHandler(fn: () => void) {
   onUnauthorized = fn;
+}
+
+/** 初回設定がまだ（403 ONBOARDING_REQUIRED）を受けたときに呼ぶ処理。lib/auth が登録する */
+let onOnboardingRequired: () => void = () => {};
+export function setOnboardingRequiredHandler(fn: () => void) {
+  onOnboardingRequired = fn;
 }
 
 function retryAfterMs(res: Response): number {
@@ -59,6 +66,8 @@ async function request(path: string, init: RequestInit = {}): Promise<Response> 
   }
   // ログインが切れた → ログイン画面へ（docs/04 の 10）
   if (res.status === 401) onUnauthorized();
+  // 初回設定がまだ → 初回設定の画面へ（docs/04 の 9）
+  if (res.status === 403 && code === "ONBOARDING_REQUIRED") onOnboardingRequired();
   throw new ApiError(res.status, code, message);
 }
 
@@ -142,6 +151,7 @@ function lazyMock(): ApiClient {
               .catch((e: unknown) => {
                 // 本物と同じく、401 ならログイン画面へ
                 if (e instanceof ApiError && e.status === 401) onUnauthorized();
+                if (isOnboardingRequired(e)) onOnboardingRequired();
                 throw e;
               }),
   });

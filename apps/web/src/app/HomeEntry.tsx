@@ -1,51 +1,79 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { LoginScreen } from "@/components/auth/LoginScreen";
-import { Logo } from "@/components/Logo";
+import { OnboardingScreen } from "@/components/auth/OnboardingScreen";
+import { HomeScreen } from "@/components/home/HomeScreen";
+import { api, isOnboardingRequired, isUnauthorized } from "@/lib/api/client";
 import { safeNext, useAuth } from "@/lib/auth/AuthProvider";
 
+function Loading() {
+  return (
+    <div className="flex min-h-dvh items-center justify-center" role="status">
+      <p className="text-[15px] text-sub">読み込み中…</p>
+    </div>
+  );
+}
+
 /**
- * ホーム（/）。ログインしていなければログイン画面を出す（docs/04 の 2・9）。
- * ログインのあとは、?next= があれば元の画面へ戻る。
- * ホームの中身（チームのデザイン、ADR-038）は #44 で作る。ここは仮の画面。
+ * ホーム（/）。docs/04 の 2・9。
+ * - ログインしていなければログイン画面
+ * - ログインしていて初回設定がまだ（API が 403 ONBOARDING_REQUIRED）なら初回設定の画面
+ * - それ以外はホーム
+ * ログインや初回設定のあとは、?next= があれば元の画面へ戻る。
+ * ホームの中身（ロゴ・ぴあ友・吹き出し・3つのボタン）は components/home/HomeScreen.tsx。
  */
 export function HomeEntry() {
-  const { user, signOut, expired } = useAuth();
+  const { user, expired, onboardingRequired, onboardingDone } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
   const next = safeNext(params.get("next"));
   const wasExpired = params.get("expired") === "1";
 
   const signedIn = user != null && !expired;
-  useEffect(() => {
-    if (signedIn && next) router.replace(next);
-  }, [signedIn, next, router]);
+  const uid = signedIn ? user.uid : null;
 
-  if (user === undefined || (signedIn && next)) {
+  // 登録済みか確かめる（GET /users/me/）。未登録なら API が 403 ONBOARDING_REQUIRED を返し、
+  // client.ts が onboardingRequired を立てる。確認が済んだ人（uid）を覚える。
+  // 通信などで確認できなかったときも、ホームは出す（取得に失敗してもボタンは使える、というホームの決まり）。
+  // 本当に未登録なら、ホームや次の画面の API が 403 を返すので、そこで初回設定に移る。
+  const [checkedUid, setCheckedUid] = useState<string | null>(null);
+  useEffect(() => {
+    if (!uid) return;
+    let alive = true;
+    api.getMe().then(
+      () => {
+        if (alive) setCheckedUid(uid);
+      },
+      (e: unknown) => {
+        if (!alive || isOnboardingRequired(e) || isUnauthorized(e)) return; // どちらも別の処理が引き受ける
+        setCheckedUid(uid); // 確認できなかった（通信の失敗など）。ホームは出す
+      },
+    );
+    return () => {
+      alive = false;
+    };
+  }, [uid]);
+
+  const ready = signedIn && checkedUid === uid && !onboardingRequired;
+  useEffect(() => {
+    if (ready && next) router.replace(next);
+  }, [ready, next, router]);
+
+  if (user === undefined) return <Loading />;
+  if (!signedIn) return <LoginScreen expired={expired || wasExpired} />;
+  if (onboardingRequired) {
     return (
-      <div className="flex min-h-dvh items-center justify-center" role="status">
-        <p className="text-[15px] text-sub">読み込み中…</p>
-      </div>
+      <OnboardingScreen
+        onDone={() => {
+          setCheckedUid(uid); // 登録できた＝確認済み。次へ進む
+          onboardingDone();
+        }}
+      />
     );
   }
-  if (!signedIn) return <LoginScreen expired={expired || wasExpired} />;
+  if (!ready || next) return <Loading />;
 
-  return (
-    <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4">
-      <Logo className="h-10" />
-      <p className="text-[16px]">{user.displayName ? `${user.displayName}さん、ようこそ` : "ようこそ"}</p>
-      <p className="text-[13px] text-sub">（ホームの画面は #44 で作ります）</p>
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Link href="/lessons/" className="rounded-2xl bg-primary px-6 py-3 text-center font-bold text-white">
-          学習内容を選ぶ
-        </Link>
-        <button type="button" onClick={() => void signOut()} className="rounded-2xl border-[1.5px] border-outline bg-card px-6 py-3 font-bold text-link">
-          ログアウト
-        </button>
-      </div>
-    </main>
-  );
+  return <HomeScreen />;
 }
