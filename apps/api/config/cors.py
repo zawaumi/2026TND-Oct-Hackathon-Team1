@@ -1,6 +1,6 @@
 """開発中に、画面（http://localhost:3000）から API（:8000）を呼べるようにする（CORS）。
 
-本番は Firebase Hosting から /api/** を Cloud Run へ転送し、同じ場所に見せるので CORS は要らない（#56）。
+本番は Firebase Hosting から /api/** を Cloud Run へ転送し、同じ場所に見せるので CORS は要らない（docs/01 の本番構成）。
 許可するのは CORS_ALLOWED_ORIGINS に書いた場所だけ。ほかの場所からの呼び出しには何も付けない。
 """
 

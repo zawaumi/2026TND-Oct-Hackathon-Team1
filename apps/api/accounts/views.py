@@ -36,7 +36,7 @@ def _bad(code, message):
 
 
 class OnboardingView(APIView):
-    """POST /api/v1/onboarding/complete/ 説明と同意のあとに初回登録する（#12）。
+    """POST /api/v1/onboarding/complete/ 説明と同意のあとに初回登録する。
 
     初回は 201、登録済みの再送は 200（中身は変えない）。同意がなければ登録しない。
     """

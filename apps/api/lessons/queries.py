@@ -1,4 +1,4 @@
-"""教材の取得（Issue #18）。画面の GET /lessons/・/knowledge-graph/ のための絞り込みと組み立て。"""
+"""教材の取得。画面の GET /lessons/・/knowledge-graph/ のための絞り込みと組み立て。"""
 
 from django.db.models import Q
 
@@ -115,9 +115,9 @@ def knowledge_graph(user, peer, lesson_id=None):
 
 
 def _prerequisite_edges():
-    """前提関係（ConceptPrerequisite、#16）。まだモデルがないときは空。"""
+    """前提関係（ConceptPrerequisite）。まだモデルがないときは空。"""
     try:
-        from .models import ConceptPrerequisite  # noqa: PLC0415  #16 で追加される
+        from .models import ConceptPrerequisite  # noqa: PLC0415  前提関係のモデルを足したら使われる
     except ImportError:
         return []
     return [

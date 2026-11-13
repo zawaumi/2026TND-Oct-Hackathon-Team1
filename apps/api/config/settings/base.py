@@ -15,6 +15,7 @@ INSTALLED_APPS = [
     "lessons",
     "peers",
     "learning",
+    "evaluations",
     "integrations",
 ]
 

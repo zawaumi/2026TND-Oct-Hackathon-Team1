@@ -70,10 +70,11 @@ class SessionApiTests(TestCase):
         c = self.client_for(self.a)
         r1 = c.post(f"/api/v1/sessions/{sid}/finish/")
         self.assertEqual(r1.status_code, 202)
-        self.assertEqual(r1.json(), {"session_id": sid, "status": "evaluation_pending"})
+        # 評価はその場で終わる（外部の呼び出しがないため）
+        self.assertEqual(r1.json(), {"session_id": sid, "status": "evaluation_complete"})
         finished_at = LearningSession.objects.get(id=sid).finished_at
         r2 = c.post(f"/api/v1/sessions/{sid}/finish/")
-        self.assertEqual(r2.json()["status"], "evaluation_pending")
+        self.assertEqual(r2.json()["status"], "evaluation_complete")
         self.assertEqual(LearningSession.objects.get(id=sid).finished_at, finished_at)  # 2回目で変わらない
 
     def test_session_belongs_to_own_peer(self):

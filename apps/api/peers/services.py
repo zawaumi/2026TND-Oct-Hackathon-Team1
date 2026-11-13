@@ -4,7 +4,7 @@ from lessons.models import Concept, Scope
 
 from .models import KnowledgeStatus, Peer, PeerKnowledge
 
-# 習得に必要な検証済みの正答の数。MasteryPolicy（#39）ができるまでの既定値（docs/03・ADR-023）
+# 習得に必要な検証済みの正答の数。習得判定（MasteryPolicy）ができるまでの既定値（docs/03・ADR-023）
 DEFAULT_REQUIRED_CORRECT = 2
 
 
