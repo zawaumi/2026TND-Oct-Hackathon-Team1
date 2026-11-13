@@ -1,0 +1,876 @@
+{
+  "schema_version": "1.1-draft",
+  "source_status": "APP_CURATED_DRAFT",
+  "note": "中1数学「一元一次方程式」の初期教材。内容は人手レビュー前の下書きで、公式の評価規準や学習指導要領の本文の転載ではない。小単元の名前と分け方はアプリ独自。習得条件・配点は仮の値。",
+  "curriculum": {
+    "revision": {
+      "code": "JHS-2017",
+      "name": "中学校学習指導要領（平成29年告示）",
+      "issued_year": 2017,
+      "source_url": "https://www.mext.go.jp/a_menu/shotou/new-cs/1384661.htm"
+    },
+    "items": [
+      {
+        "key": "subject-math",
+        "parent": null,
+        "type": "subject",
+        "title": "数学",
+        "official_code": ""
+      },
+      {
+        "key": "area-a",
+        "parent": "subject-math",
+        "type": "domain",
+        "title": "A 数と式",
+        "official_code": ""
+      },
+      {
+        "key": "content-a3",
+        "parent": "area-a",
+        "type": "content",
+        "title": "（3）一元一次方程式",
+        "official_code": ""
+      }
+    ],
+    "official_code_status": "教育データ標準の学習指導要領コードは未確認のため空にしてある"
+  },
+  "sources": [
+    {
+      "id": "mext-gakushu-shido",
+      "title": "中学校学習指導要領（平成29年告示）第2章 第3節 数学 第2 第1学年 2 内容 A 数と式（3）一元一次方程式",
+      "publisher": "文部科学省",
+      "url": "https://www.mext.go.jp/a_menu/shotou/new-cs/1384661.htm",
+      "locator": "第1学年 2 内容 A（3）一元一次方程式（頁の番号は未確認。NIER資料p.29は、第1学年の目標を学習指導要領p.65としている）",
+      "retrieved": "2026-11-12",
+      "confirmed": true,
+      "use": "小単元が属する公式の内容のまとまりを確かめる。本文は転載していない"
+    },
+    {
+      "id": "nier-chu-sansu",
+      "title": "「指導と評価の一体化」のための学習評価に関する参考資料 中学校 数学（令和2年3月）",
+      "publisher": "国立教育政策研究所 教育課程研究センター",
+      "url": "https://www.nier.go.jp/kaihatsu/pdf/hyouka/r020326_mid_sansu.pdf",
+      "locator": "p.27 内容のまとまり一覧（第1学年 A(3) 一元一次方程式）／p.51-58 事例2「一元一次方程式」（p.51 単元の評価規準、p.52 指導と評価の計画、p.57-58 移項・解の意味・解く問題の評価）／p.78 巻末資料 1A(3) 内容のまとまりごとの評価規準（例）",
+      "retrieved": "2026-11-12",
+      "confirmed": true,
+      "use": "公式の内容のまとまりと評価規準の例を確かめる。小単元の分け方は事例の一例で、公式の分類ではない。例題の式は独自に作成した。2026年7月に一部教科で誤植修正の更新があったと同サイトに記載があるため、頁は版により変わる可能性がある"
+    }
+  ],
+  "lessons": [
+    {
+      "key": "domain-a",
+      "parent": null,
+      "kind": "domain",
+      "title": "数と式",
+      "official_name": true,
+      "grade": 1,
+      "sort_order": 1,
+      "curriculum_item": "area-a",
+      "publish_scope": "mvp",
+      "concepts": [],
+      "sources": [
+        "nier-chu-sansu"
+      ]
+    },
+    {
+      "key": "unit-equation",
+      "parent": "domain-a",
+      "kind": "unit",
+      "title": "一元一次方程式",
+      "official_name": true,
+      "grade": 1,
+      "sort_order": 1,
+      "curriculum_item": "content-a3",
+      "publish_scope": "mvp",
+      "concepts": [],
+      "sources": [
+        "nier-chu-sansu"
+      ]
+    },
+    {
+      "key": "lesson-equality",
+      "parent": "unit-equation",
+      "kind": "lesson",
+      "title": "等式の性質",
+      "official_name": false,
+      "grade": 1,
+      "sort_order": 1,
+      "curriculum_item": "content-a3",
+      "publish_scope": "mvp",
+      "concepts": [
+        "equality-add-subtract",
+        "equality-multiply-divide"
+      ],
+      "sources": [
+        "nier-chu-sansu",
+        "mext-gakushu-shido"
+      ],
+      "definition": "等式は、左辺と右辺が等しいことを表す式。等式の両辺に同じ数や式をたしたり、ひいたりしても、同じ数をかけたり、0以外の同じ数でわったりしても、等式は成り立つ。",
+      "goals": [
+        "等式の両辺に同じ操作をしても、等式が成り立つことを説明できる",
+        "等式の性質を使って、x＝（数）の形に変形できる",
+        "0 でわることはできない理由を説明できる"
+      ],
+      "rubric": {
+        "version": "draft-2",
+        "weights_status": "PROVISIONAL",
+        "app_axes": [
+          {
+            "code": "accuracy",
+            "label": "正確さ",
+            "weight": 40,
+            "perspective": "知識・技能",
+            "description": "説明と、ぴあ友の質問への答えに誤りがないか",
+            "checkpoints": [
+              "両辺に同じ数や式を「たす・ひく」、同じ数を「かける」のどれでも等式が成り立つと述べている",
+              "わる場合は 0 以外の数に限ると述べている",
+              "例の計算（x＋3＝7 から x＝4 など）に誤りがない"
+            ]
+          },
+          {
+            "code": "logic",
+            "label": "論理性",
+            "weight": 30,
+            "perspective": "思考・判断・表現",
+            "description": "手順や理由の筋道が通っているか。質問に根拠を示して答えられたか",
+            "checkpoints": [
+              "等しいものに同じ操作をしても等しいままである、という理由を述べている",
+              "「どうして0でわったらだめなの？」に根拠を示して答えている"
+            ]
+          },
+          {
+            "code": "clarity",
+            "label": "分かりやすさ",
+            "weight": 30,
+            "perspective": "思考・判断・表現",
+            "description": "ぴあ友がつまずいたところを、言い換えや例で補えたか",
+            "checkpoints": [
+              "具体的な数の式で例を示している",
+              "ぴあ友が迷ったところを、言い換えや別の例で補っている"
+            ]
+          }
+        ],
+        "out_of_scope": [
+          "主体的に学習に取り組む態度（長期的な根拠が必要なため、MVPの説明力スコアでは扱わない）"
+        ]
+      }
+    },
+    {
+      "key": "lesson-solving",
+      "parent": "unit-equation",
+      "kind": "lesson",
+      "title": "方程式の解法",
+      "official_name": false,
+      "grade": 1,
+      "sort_order": 2,
+      "curriculum_item": "content-a3",
+      "publish_scope": "mvp",
+      "concepts": [
+        "equality-add-subtract",
+        "equality-multiply-divide",
+        "linear-equation-solving"
+      ],
+      "sources": [
+        "nier-chu-sansu",
+        "mext-gakushu-shido"
+      ],
+      "definition": "方程式を成り立たせる文字の値を解といい、解を求めることを方程式を解くという。等式の性質を使って x＝（数）の形にして解を求め、代入して確かめる。",
+      "goals": [
+        "方程式の解の意味（方程式を成り立たせる文字の値）を説明できる",
+        "等式の性質を使って、一元一次方程式を解くことができる",
+        "求めた解を、もとの方程式に代入して確かめることができる"
+      ],
+      "rubric": {
+        "version": "draft-2",
+        "weights_status": "PROVISIONAL",
+        "app_axes": [
+          {
+            "code": "accuracy",
+            "label": "正確さ",
+            "weight": 40,
+            "perspective": "知識・技能",
+            "description": "説明と、ぴあ友の質問への答えに誤りがないか",
+            "checkpoints": [
+              "解の意味（方程式を成り立たせる値）を正しく述べている",
+              "変形のたびに両辺に同じ操作をしている",
+              "解を代入して確かめる方法に誤りがない"
+            ]
+          },
+          {
+            "code": "logic",
+            "label": "論理性",
+            "weight": 30,
+            "perspective": "思考・判断・表現",
+            "description": "手順や理由の筋道が通っているか。質問に根拠を示して答えられたか",
+            "checkpoints": [
+              "各変形がどの等式の性質を使っているかを述べている",
+              "x＝（数）の形にするために、どの順に変形するかの理由を述べている"
+            ]
+          },
+          {
+            "code": "clarity",
+            "label": "分かりやすさ",
+            "weight": 30,
+            "perspective": "思考・判断・表現",
+            "description": "ぴあ友がつまずいたところを、言い換えや例で補えたか",
+            "checkpoints": [
+              "具体的な方程式で手順を順に示している",
+              "ぴあ友がつまずいた変形を、言い換えや例で補っている"
+            ]
+          }
+        ],
+        "out_of_scope": [
+          "主体的に学習に取り組む態度（長期的な根拠が必要なため、MVPの説明力スコアでは扱わない）"
+        ]
+      }
+    },
+    {
+      "key": "lesson-transposition",
+      "parent": "unit-equation",
+      "kind": "lesson",
+      "title": "移項",
+      "official_name": false,
+      "grade": 1,
+      "sort_order": 3,
+      "curriculum_item": "content-a3",
+      "publish_scope": "mvp",
+      "concepts": [
+        "equality-add-subtract",
+        "transposition"
+      ],
+      "sources": [
+        "nier-chu-sansu",
+        "mext-gakushu-shido"
+      ],
+      "definition": "等式の一方の辺の項を、符号を変えて他方の辺に移すことを移項という。移項は、等式の性質（両辺に同じ数や式をたす・ひく）を使った変形を短く書いたものである。",
+      "goals": [
+        "移項の意味（項を符号を変えて反対側の辺に移すこと）を説明できる",
+        "移項してよい理由を、等式の性質を使って説明できる",
+        "移項を使って方程式を解くことができる"
+      ],
+      "rubric": {
+        "version": "draft-2",
+        "weights_status": "PROVISIONAL",
+        "app_axes": [
+          {
+            "code": "accuracy",
+            "label": "正確さ",
+            "weight": 40,
+            "perspective": "知識・技能",
+            "description": "説明と、ぴあ友の質問への答えに誤りがないか",
+            "checkpoints": [
+              "移項すると項の符号が変わると正しく述べている",
+              "移項の例（x＋8＝13 から x＝13－8 など）に誤りがない"
+            ]
+          },
+          {
+            "code": "logic",
+            "label": "論理性",
+            "weight": 30,
+            "perspective": "思考・判断・表現",
+            "description": "手順や理由の筋道が通っているか。質問に根拠を示して答えられたか",
+            "checkpoints": [
+              "符号が変わる理由を、両辺に同じ数をたす・ひくことで説明している",
+              "「どうして符号が変わるの？」に根拠を示して答えている"
+            ]
+          },
+          {
+            "code": "clarity",
+            "label": "分かりやすさ",
+            "weight": 30,
+            "perspective": "思考・判断・表現",
+            "description": "ぴあ友がつまずいたところを、言い換えや例で補えたか",
+            "checkpoints": [
+              "具体的な式で、移項の前後を並べて示している",
+              "ぴあ友がつまずいたところを、言い換えや別の例で補っている"
+            ]
+          }
+        ],
+        "out_of_scope": [
+          "主体的に学習に取り組む態度（長期的な根拠が必要なため、MVPの説明力スコアでは扱わない）"
+        ]
+      }
+    },
+    {
+      "key": "lesson-word-problem",
+      "parent": "unit-equation",
+      "kind": "lesson",
+      "title": "方程式の利用（文章題）",
+      "official_name": false,
+      "grade": 1,
+      "sort_order": 4,
+      "curriculum_item": "content-a3",
+      "publish_scope": "later",
+      "concepts": [
+        "equation-word-problem"
+      ],
+      "sources": [
+        "nier-chu-sansu"
+      ],
+      "note": "MVP では公開しない（ADR-028）。概念だけ知識マップに未習として出す。"
+    }
+  ],
+  "concepts": [
+    {
+      "code": "equality-add-subtract",
+      "title": "等式の両辺に同じ数をたす・ひく",
+      "description": "等式の両辺に同じ数や式をたしても、ひいても、等式は成り立つ。たとえば x＋3＝7 の両辺から 3 をひくと x＝4 になる。",
+      "difficulty": 1,
+      "skills": [
+        "add_both_sides",
+        "subtract_both_sides"
+      ],
+      "prerequisites": [],
+      "verification": "VERIFIED",
+      "mastery_policy": {
+        "required_correct": 1,
+        "required_problem_variants": 1,
+        "require_verified_steps": true
+      },
+      "examples": [
+        {
+          "id": "ex-add-sub-1",
+          "form": "x+a=b",
+          "equation": "x+3=7",
+          "solution": "4",
+          "purpose": "両辺から同じ数をひく（x＋3＝7）",
+          "steps": [
+            {
+              "expr": "x+3=7"
+            },
+            {
+              "expr": "x+3-3=7-3",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "3"
+                }
+              ]
+            },
+            {
+              "expr": "x=4",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-add-sub-2",
+          "form": "x-a=b",
+          "equation": "x-5=2",
+          "solution": "7",
+          "purpose": "両辺に同じ数をたす（x－5＝2）",
+          "steps": [
+            {
+              "expr": "x-5=2"
+            },
+            {
+              "expr": "x-5+5=2+5",
+              "ops": [
+                {
+                  "rule": "add_both_sides",
+                  "arg": "5"
+                }
+              ]
+            },
+            {
+              "expr": "x=7",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "equality-multiply-divide",
+      "title": "等式の両辺に同じ数をかける・0以外の同じ数でわる",
+      "description": "等式の両辺に同じ数をかけても、0以外の同じ数でわっても、等式は成り立つ（0でわることはできない）。たとえば 3x＝12 の両辺を 3 でわると x＝4 になる。",
+      "difficulty": 2,
+      "skills": [
+        "multiply_nonzero",
+        "divide_nonzero"
+      ],
+      "prerequisites": [],
+      "verification": "VERIFIED",
+      "mastery_policy": {
+        "required_correct": 2,
+        "required_problem_variants": 2,
+        "require_verified_steps": true
+      },
+      "examples": [
+        {
+          "id": "ex-mul-div-1",
+          "form": "ax=b",
+          "equation": "3x=12",
+          "solution": "4",
+          "purpose": "両辺を 0 以外の同じ数でわる（3x＝12）",
+          "steps": [
+            {
+              "expr": "3x=12"
+            },
+            {
+              "expr": "3x/3=12/3",
+              "ops": [
+                {
+                  "rule": "divide_nonzero",
+                  "arg": "3"
+                }
+              ]
+            },
+            {
+              "expr": "x=4",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-mul-div-2",
+          "form": "x/a=b",
+          "equation": "x/4=3",
+          "solution": "12",
+          "purpose": "両辺に同じ数をかける（x÷4＝3）",
+          "steps": [
+            {
+              "expr": "x/4=3"
+            },
+            {
+              "expr": "x/4*4=3*4",
+              "ops": [
+                {
+                  "rule": "multiply_nonzero",
+                  "arg": "4"
+                }
+              ]
+            },
+            {
+              "expr": "x=12",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "transposition",
+      "title": "移項",
+      "description": "等式の一方の辺にある項を、符号を変えて反対側の辺に移すことを移項という。移項は、等式の性質（両辺に同じ数や式をたす・ひく）を使った変形を短く書いたものである。",
+      "difficulty": 2,
+      "skills": [],
+      "prerequisites": [
+        "equality-add-subtract"
+      ],
+      "verification": "VERIFIED",
+      "mastery_policy": {
+        "required_correct": 2,
+        "required_problem_variants": 2,
+        "require_verified_steps": true
+      },
+      "examples": [
+        {
+          "id": "ex-transpose-1",
+          "form": "transpose-constant",
+          "equation": "x+8=13",
+          "solution": "5",
+          "purpose": "数の項を移項する（符号が＋から－に変わる）",
+          "steps": [
+            {
+              "expr": "x+8=13"
+            },
+            {
+              "expr": "x=13-8",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "8"
+                }
+              ]
+            },
+            {
+              "expr": "x=5",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-transpose-2",
+          "form": "transpose-constant",
+          "equation": "x-3=9",
+          "solution": "12",
+          "purpose": "数の項を移項する（符号が－から＋に変わる）",
+          "steps": [
+            {
+              "expr": "x-3=9"
+            },
+            {
+              "expr": "x=9+3",
+              "ops": [
+                {
+                  "rule": "add_both_sides",
+                  "arg": "3"
+                }
+              ]
+            },
+            {
+              "expr": "x=12",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-transpose-3",
+          "form": "transpose-x-term",
+          "equation": "2x=x+5",
+          "solution": "5",
+          "purpose": "x の項を左辺に移項する",
+          "steps": [
+            {
+              "expr": "2x=x+5"
+            },
+            {
+              "expr": "2x-x=5",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "x"
+                }
+              ]
+            },
+            {
+              "expr": "x=5",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-transpose-4",
+          "form": "transpose-x-term",
+          "equation": "3x-2=2x+4",
+          "solution": "6",
+          "purpose": "x の項と数の項を両方移項する",
+          "steps": [
+            {
+              "expr": "3x-2=2x+4"
+            },
+            {
+              "expr": "3x-2x=4+2",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "2x"
+                },
+                {
+                  "rule": "add_both_sides",
+                  "arg": "2"
+                }
+              ]
+            },
+            {
+              "expr": "x=6",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "linear-equation-solving",
+      "title": "一元一次方程式を解く",
+      "description": "等式の性質を使って x＝（数）の形に変形し、方程式の解を求める。求めた解は、もとの方程式に代入して確かめられる。",
+      "difficulty": 2,
+      "skills": [],
+      "prerequisites": [
+        "equality-add-subtract",
+        "equality-multiply-divide"
+      ],
+      "verification": "VERIFIED",
+      "mastery_policy": {
+        "required_correct": 2,
+        "required_problem_variants": 2,
+        "require_verified_steps": true
+      },
+      "examples": [
+        {
+          "id": "ex-solve-1",
+          "form": "ax+b=c",
+          "equation": "2x+3=11",
+          "solution": "4",
+          "purpose": "x の係数が 1 でない方程式（答えは整数）",
+          "steps": [
+            {
+              "expr": "2x+3=11"
+            },
+            {
+              "expr": "2x+3-3=11-3",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "3"
+                }
+              ]
+            },
+            {
+              "expr": "2x=8",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            },
+            {
+              "expr": "2x/2=8/2",
+              "ops": [
+                {
+                  "rule": "divide_nonzero",
+                  "arg": "2"
+                }
+              ]
+            },
+            {
+              "expr": "x=4",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-solve-2",
+          "form": "ax+b=cx+d",
+          "equation": "3x-4=x+8",
+          "solution": "6",
+          "purpose": "両辺に x がある方程式",
+          "steps": [
+            {
+              "expr": "3x-4=x+8"
+            },
+            {
+              "expr": "3x-4-x=x+8-x",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "x"
+                }
+              ]
+            },
+            {
+              "expr": "2x-4=8",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            },
+            {
+              "expr": "2x-4+4=8+4",
+              "ops": [
+                {
+                  "rule": "add_both_sides",
+                  "arg": "4"
+                }
+              ]
+            },
+            {
+              "expr": "2x=12",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            },
+            {
+              "expr": "2x/2=12/2",
+              "ops": [
+                {
+                  "rule": "divide_nonzero",
+                  "arg": "2"
+                }
+              ]
+            },
+            {
+              "expr": "x=6",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-solve-3",
+          "form": "ax+b=cx+d",
+          "equation": "4x+1=2x-9",
+          "solution": "-5",
+          "purpose": "両辺に x があり、解が負の数",
+          "steps": [
+            {
+              "expr": "4x+1=2x-9"
+            },
+            {
+              "expr": "4x+1-2x=2x-9-2x",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "2x"
+                }
+              ]
+            },
+            {
+              "expr": "2x+1=-9",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            },
+            {
+              "expr": "2x+1-1=-9-1",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "1"
+                }
+              ]
+            },
+            {
+              "expr": "2x=-10",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            },
+            {
+              "expr": "2x/2=-10/2",
+              "ops": [
+                {
+                  "rule": "divide_nonzero",
+                  "arg": "2"
+                }
+              ]
+            },
+            {
+              "expr": "x=-5",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ex-solve-4",
+          "form": "ax+b=c-fraction-answer",
+          "equation": "2x+1=4",
+          "solution": "3/2",
+          "purpose": "解が分数になる方程式",
+          "steps": [
+            {
+              "expr": "2x+1=4"
+            },
+            {
+              "expr": "2x+1-1=4-1",
+              "ops": [
+                {
+                  "rule": "subtract_both_sides",
+                  "arg": "1"
+                }
+              ]
+            },
+            {
+              "expr": "2x=3",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            },
+            {
+              "expr": "2x/2=3/2",
+              "ops": [
+                {
+                  "rule": "divide_nonzero",
+                  "arg": "2"
+                }
+              ]
+            },
+            {
+              "expr": "x=3/2",
+              "ops": [
+                {
+                  "rule": "simplify_arithmetic"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "equation-word-problem",
+      "title": "方程式を使った文章題",
+      "description": "文章の中の数量の関係を等式で表して方程式をつくり、それを解いて、答えが問題に合っているかを確かめる。",
+      "difficulty": 3,
+      "skills": [],
+      "prerequisites": [
+        "linear-equation-solving"
+      ],
+      "verification": "UNSUPPORTED",
+      "mastery_policy": null,
+      "note": "文章から式を立てる部分を自動で採点できないため、MVP では公開せず習得判定にも使わない（ADR-028）。知識マップには未習として出す。",
+      "examples": [
+        {
+          "id": "ex-word-1",
+          "verification": "UNSUPPORTED",
+          "form": "word-problem",
+          "equation": "3x+70=400",
+          "solution": "110",
+          "purpose": "（参考・自動採点しない）えんぴつ3本とけしゴム1個で400円。けしゴム1個は70円。えんぴつ1本は何円か。立式は 3x＋70＝400。",
+          "steps": []
+        }
+      ]
+    }
+  ],
+  "review": {
+    "status": "approved",
+    "author": "Shiori",
+    "math_reviewer": "石橋",
+    "source_reviewer": "石橋",
+    "reviewed_on": "2026-11-13",
+    "record": "docs/materials/jhs1_math_equation_review.md"
+  }
+}
