@@ -19,6 +19,7 @@ def build_urlpatterns(admin_enabled):
         path("api/v1/", include("peers.urls")),
         path("api/v1/", include("lessons.urls")),
         path("api/v1/", include("learning.urls")),
+        path("api/v1/", include("exercises.urls")),
     ]
     if admin_enabled:
         # 管理画面（管理者だけがログインできる）。本番では既定で出さない（DJANGO_ADMIN_ENABLED、config/settings/production.py）
