@@ -43,11 +43,16 @@ def _model_version():
 
 
 def _knowledge_changes(session):
-    """授業の中のターンで起きた変化を、概念ごとに「最初の前 → 最後の後」にまとめる。"""
+    """授業の中のターンと、ぴあ友の解答で起きた変化を、概念ごとに「最初の前 → 最後の後」にまとめる。"""
+    from exercises.models import ExerciseAttempt  # noqa: PLC0415
+
     merged: dict[int, dict] = {}
-    turns = LearningTurn.objects.filter(session=session, status=LearningTurn.Status.DONE).order_by("id")
-    for turn in turns:
-        for change in (turn.result_cache or {}).get("knowledge_changes", []):
+    events = [
+        (t.created_at, t.id, t.result_cache)
+        for t in LearningTurn.objects.filter(session=session, status=LearningTurn.Status.DONE)
+    ] + [(a.created_at, a.id, a.result_cache) for a in ExerciseAttempt.objects.filter(exercise__session=session)]
+    for _at, _id, cache in sorted(events, key=lambda e: (e[0], e[1])):
+        for change in (cache or {}).get("knowledge_changes", []):
             cid = change["concept_id"]
             if cid in merged:
                 merged[cid]["new_status"] = change["new_status"]
