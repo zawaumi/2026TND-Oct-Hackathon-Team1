@@ -35,7 +35,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# ---- 秘密情報（#9）: 追跡しない。例は .env.example だけ
+# ---- 秘密情報: 追跡しない。例は .env.example だけ
 .env.*
 !.env.example
 # Firebase / Google Cloud のサービスアカウント鍵・認証情報

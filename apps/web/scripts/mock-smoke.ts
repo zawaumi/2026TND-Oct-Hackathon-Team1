@@ -1,6 +1,6 @@
 /**
  * モックの動作確認（npm run test:mock）。
- * もとは Shiori さんの #82（scripts/mock-smoke.ts）。いまのモック（src/lib/api/mock.ts）に合わせて書き直した。
+ * もとは Shiori さんが作った scripts/mock-smoke.ts。いまのモック（src/lib/api/mock.ts）に合わせて書き直した。
  */
 import assert from "node:assert/strict";
 import { mockClient as api, setMockScenario } from "../src/lib/api/mock";

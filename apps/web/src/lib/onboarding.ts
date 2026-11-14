@@ -2,7 +2,7 @@ import { ApiError, isNetworkError, type OnboardingRequest, type SchoolLevel } fr
 
 /**
  * 同意した文書の版（API の terms_version・privacy_notice_version に送る）。
- * 利用規約・データの扱いの説明の正式な文面は、法務の確認（#65）のあとに決める。
+ * 利用規約・データの扱いの説明の正式な文面は、法務の確認のあとに決める。
  * それまでは仮の版（draft-1）。文面を変えたら、ここの版も更新する。
  */
 export const TERMS_VERSION = "draft-1";

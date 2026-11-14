@@ -31,7 +31,7 @@ npm run gen:api     # contracts/openapi.yaml から API の型（src/lib/api/sch
 - 本番ビルド（`npm run build`）では、`next.config.ts` がモックを空の部品（`mock.disabled.ts`）に差し替える。
 - ビルドのあとに `scripts/check-no-mock.mjs` が自動で動き（`postbuild`）、成果物にモックの目印（`__PIATOMO_API_MOCK__`）があれば失敗する。
 - `NEXT_PUBLIC_API_MOCK=true` のまま本番ビルドすると失敗する。公開先を分けたステージングなど、どうしてもモック入りで本番モードのビルドが要るときだけ `NEXT_PUBLIC_MOCK_BUILD_ACK=staging-only` を付ける（本番には配備しない）。
-- この仕組みと動作確認のテストは、Shioriさんの #82 から取り込んだ。
+- この仕組みと動作確認のテストは、Shioriさんが最初に作ったものから取り込んだ。
 
 ### シナリオでエラーの表示を試す
 URL に `?mock=…` を付けると、画面全体の状態を切り替えられる。ページを移っても続き、`?mock=normal` で戻る。
@@ -81,18 +81,18 @@ URL に `?mock=…` を付けると、画面全体の状態を切り替えられ
 - 学習ルームから「授業を終える」で来ると、その授業の会話（このタブのメモリだけにある）から「ぴあ友がつまずいたところ」が出る。直接開いたときや再読み込みしたあとは出ない。
 - `?session=99`：3観点すべて評価保留。`?session=98`：評価できなかった。それ以外：分かりやすさだけ評価保留（74点）。
 
-## ログイン（#10）
+## ログイン
 - ログインは Google アカウントだけ（Firebase Authentication、ADR-016）。設定値は `src/lib/auth/firebase.ts`（公開してよい値）。
 - ホーム（`/`）は、ログインしていなければログイン画面になる。ほかの画面をログインせずに開くと、`/?next=元の画面` に移り、ログインのあとに元の画面へ戻る。
 - API が 401 を返したら（ログインが切れた）、ログイン画面に「期限が切れました」と出して戻す。
-- API を呼ぶときは、Firebase の ID トークンを `Authorization: Bearer …` で付ける（DRF 側の確認は #11）。
+- API を呼ぶときは、Firebase の ID トークンを `Authorization: Bearer …` で付ける（DRF 側で検証する）。
 - モックのときはログインした「ふり」をする（ログイン画面は `?mock=unauthorized` で見られる）。モックのまま本物の Google ログインを試すときは、`apps/web/.env.local` に `NEXT_PUBLIC_AUTH=firebase` を書く。
 - Firebase コンソールで、Authentication の「ログイン方法」で Google を有効にし、「承認済みドメイン」に公開先のドメイン（Hosting のドメインなど）を入れておく。`localhost` は最初から入っている。
 
-## 初回登録（#43）
+## 初回登録
 - 初回設定の画面は `/` に出る（docs/04 の 2・9）。ログイン済みで未登録のとき、画面（`src/components/auth/OnboardingScreen.tsx`）がニックネーム・校種・学年とデータの扱いの説明、同意のチェックを出す。同意のチェックがなければ「はじめる」は押せない。
 - 未登録かどうかは、API が返す 403 `ONBOARDING_REQUIRED` で分かる。どの API でも 403 `ONBOARDING_REQUIRED` を受けたら、`client.ts` が `setOnboardingRequiredHandler` で登録された処理を呼び、`useAuth()` の `onboardingRequired` が true になる。ホーム以外の画面では、`AuthGate` が `/?next=元の画面` へ移し、登録のあとに元の画面へ戻る。
-- 登録は `POST /onboarding/complete/`。送る値は `nickname`・`school_level`・`grade`・`terms_version`・`privacy_notice_version`・`consent_confirmed: true`（これ以外は送らない）。版の値は `src/lib/onboarding.ts`。**利用規約・データの扱いの正式な文面は法務の確認（#65）のあとに決める。それまで版は仮の `draft-1`。**
+- 登録は `POST /onboarding/complete/`。送る値は `nickname`・`school_level`・`grade`・`terms_version`・`privacy_notice_version`・`consent_confirmed: true`（これ以外は送らない）。版の値は `src/lib/onboarding.ts`。**利用規約・データの扱いの正式な文面は法務の確認のあとに決める。それまで版は仮の `draft-1`。**
 - モックで試す: `?mock=newUser` を付けて `/` を開く（ログインはモックなので、すぐ初回設定が出る）。ニックネームに `#neterr` と入れると、1回目だけ通信エラーになる。
 
 ## ホーム（`/`）
