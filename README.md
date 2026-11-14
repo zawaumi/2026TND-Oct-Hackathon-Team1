@@ -5,11 +5,11 @@ TND 秋のハッカソン2026・チーム1。
 
 ![ぴあ友に教えている学習ルームの画面](docs/submission/screens/03-pc-study-teach.png)
 
-*スクリーンショットは、疑似データ（モックAPI）で動かしたデモ版の画面です。実際のAIの応答や、習得の判定ではありません。*
+*スクリーンショットは、疑似データ（モックAPI）で動かしたデモ版の画面です。動作URLでは、本物のAI（DeepSeek）の応答と、サーバーの習得判定で動きます。*
 
 | | |
 |---|---|
-| **動作URL** | **提出時点では、未配備です。** 配備の設定と手順書は用意しました（[docs/deploy.md](docs/deploy.md)）。ローカルで動かせるデモ版は、[4. 試してみる](#4-試してみる) |
+| **動作URL** | **https://tnd2026-oct-hackathon.web.app** （Googleアカウントでログイン。本物のAI・習得判定で動きます）。ログインなしで試せるデモ版は、[4. 試してみる](#4-試してみる) |
 | **画面の紹介** | [3. 画面](#3-画面)、詳しくは [docs/screens.md](docs/screens.md) |
 | **できていること・いないこと** | [7. 現状](#7-現状)、詳しくは [docs/submission/status_and_unmet.md](docs/submission/status_and_unmet.md) |
 | **仕様書・API契約** | [docs/](docs/README.md)、[contracts/openapi.yaml](contracts/openapi.yaml) |
@@ -46,17 +46,15 @@ flowchart LR
     E -- 正常 --> G["ぴあ友の質問を<br/>表示"]
     F --> G
   end
-  subgraph todo["設計済み・未実装"]
+  subgraph done2["実装済み（問題を出す）"]
     H["学習者が<br/>問題を出す"] --> I["許可された技能<br/>だけで解いて<br/>独立に検証"]
     I --> J{{"習得条件を<br/>満たす？"}}
     J -- はい --> K["習得済みに<br/>更新"]
   end
   G --> H
-  classDef todoStyle fill:#F3F3F8,stroke:#8A8FB0,stroke-dasharray:5 5
-  class H,I,J,K todoStyle
 ```
 
-**AIの発言だけでは、習得済みになりません**（自動テストで確認）。ただし、**検証済みの出題による習得判定そのものは、まだ実装していません**（[7. 現状](#7-現状)）。
+**AIの発言だけでは、習得済みになりません。** 習得済みにするのは、サーバーが検証した出題で、習得条件（必要な正答の数と、問題の形の数）を満たしたときだけです（自動テストと、本番での確認済み）。
 
 ## 3. 画面
 
@@ -83,7 +81,19 @@ PCは幅1024px以上、スマホはそれ未満の配置です。キーボード
 
 ### 動作URL
 
-提出時点では、**配備していません**。配備の設定（Firebase Hosting・Cloud Run）と手順書（[docs/deploy.md](docs/deploy.md)）までです。
+**https://tnd2026-oct-hackathon.web.app**
+
+Firebase Hosting（画面）・Cloud Run（API）・Cloud SQL（DB）に配備し、本物の Google ログインと DeepSeek で、次の流れを通して確認しました（11/13〜14）。配備の手順は [docs/deploy.md](docs/deploy.md)。
+
+1. Google でログイン → 初回設定（ニックネーム・校種・学年・データの扱いへの同意）
+2. 「学習内容を選ぶ」→「等式の性質」→「授業を始める」
+3. 説明を書いて送る → ぴあ友（DeepSeek）が質問を返す
+4. 「問題を出す」で `x+3=7` → ぴあ友が教わった技能で解き、サーバーが検証して**習得済み**になる
+5. `2x+3=11` → 教わっていない技能（両辺を同じ数でわる）のところで**止まる**／`x^2=4` → 対応していない理由が出る
+6. 「授業を終える」→ 学習レポート、メニューの「知識マップ」
+
+- 入力した名前（ニックネーム）と、授業・評価の記録が保存されます。会話の本文はサーバーに保存しません。
+- しばらく使われていないと、最初の1回の応答に数秒かかります。
 
 ### デモ版を動かす（ローカル。モックAPI）
 
@@ -103,11 +113,11 @@ npm run dev        # Windows の PowerShell では npm.cmd run dev
 3. 「問題を出す」に切り替えて、`x+3=7` → `x+5=9`（同じ形）→ `x^2=4`（範囲外）→ `2x+3=11`（違う形）を、順に出す
 4. 習得の演出のあと、「授業を終える」でレポート、メニューの「知識マップ」で前提と状態を見る
 
-**注意**：デモ版の「問題を出す」〜習得は、**モックの動きです**。実際の習得判定ではありません。画面に「デモ」の表示は出ないので、ここで明記します。
+**注意**：デモ版の「問題を出す」〜習得は、**モックの動きです**。実際の習得判定ではありません（本物の判定は、動作URLで試せます）。画面に「デモ」の表示は出ないので、ここで明記します。
 
 ### 本物のAPIをつなぐ
 
-[8. 開発者向けガイド](#8-開発者向けガイド)の手順3〜5です（DB・API・Webの順）。ただし、出題・検証・習得判定のAPIは、未実装です。
+[8. 開発者向けガイド](#8-開発者向けガイド)の手順3〜5です（DB・API・Webの順）。教材は `python manage.py load_curated_lessons --publish` で入ります。
 
 ## 5. セキュリティとプライバシーの工夫
 
@@ -118,7 +128,8 @@ npm run dev        # Windows の PowerShell では npm.cmd run dev
 | 本人確認 | Firebase のIDトークンの署名と有効期限を検証。`alg: none`・改ざん・形式の誤りは401 | `accounts.test_auth`（`test_alg_none_is_rejected`、`test_tampered_payload`、`test_bad_tokens_are_401`） |
 | 本人以外に見せない | 他人の授業・レポート・ぴあ友の知識・私有の教材は、見えない（404） | `test_other_users_session_is_404`、`test_other_users_report_is_not_found`、`test_other_users_state_is_not_visible`、`test_private_lesson_of_others_is_hidden` |
 | AIの出力を信用しない | 出力を検証し、不正（例：`master_all`）は捨てて、定型の応答にする。知識は変わらない | `test_bad_ai_output_falls_back_without_changing_knowledge`、受入試験 `AT03` |
-| AIの発言で習得済みにならない | 習得済みにできるのは、習得判定だけ。AIが「分かった」と6回言っても、習得済みにならない | `test_advance_one_step_only`、`learning/test_acceptance.py` の `AT03` |
+| AIの発言で習得済みにならない | 習得済みにできるのは、検証済みの出題による習得判定だけ。AIが「分かった」と6回言っても、習得済みにならない。同じ形の問題は1回しか数えない | `test_advance_one_step_only`、`learning/test_acceptance.py` の `AT03`・`AT04`・`AT05` |
+| 出題の数式をサーバーで安全に読む | `eval` を使わず、一次方程式の文法だけを読む（長さ・数の大きさに上限）。ぴあ友は教わった技能だけで解き、解き方とは別の方法（各ステップの解・代入）で検証する。範囲外の問題は根拠に数えない | `exercises.tests`、`learning/test_acceptance.py` の `AT12` |
 | 不正な入力への対策 | 命令のような入力は、データとして扱い、知識や採点規準を変えない。プロンプトと入力を分ける | `test_classify`、`test_injection_like_input_does_not_change_knowledge`、`test_suspicious_input_is_not_used_for_scoring`、`test_prompt_and_input_are_separated` |
 | 外部のAIに渡す情報を最小にする | 識別子を送らない。個人情報を伏せる。渡す文脈を制限する | `integrations.tests.PayloadTests`、`test_payload_to_ai_has_no_identifiers` |
 | 会話の本文を保存しない | DBの全テーブルを検索して、会話の本文が残っていないことを確認 | `learning/test_acceptance.py` の `AT10` |
@@ -146,7 +157,7 @@ compose.yaml ローカルDB（PostgreSQL）
 | API | Django、Django REST framework、PostgreSQL |
 | 認証 | Firebase Authentication（Googleログイン）。APIはIDトークンを検証 |
 | AI | DeepSeek（ぴあ友の会話）。Jev（評価）は、まだ接続していません |
-| 公開（設計） | Firebase Hosting（画面）、Cloud Run（API）、Cloud SQL（DB） |
+| 公開 | Firebase Hosting（画面）、Cloud Run（API）、Cloud SQL（DB）、Secret Manager（秘密の値）。[手順書](docs/deploy.md) |
 | CI | GitHub Actions（`web-ci`、`api-ci`）。マージにはCIの成功が条件 |
 
 構成の詳細は、[docs/01_architecture.md](docs/01_architecture.md)。使っているライブラリとライセンスは、[docs/submission/status_and_unmet.md](docs/submission/status_and_unmet.md) の10節です。
@@ -157,11 +168,11 @@ compose.yaml ローカルDB（PostgreSQL）
 
 | | 状態 |
 |---|---|
-| ログインの本人確認、初回登録、教材選択、「教える」会話、学習レポート、知識マップ | **動く**（API・画面。外部AIはモック。実際のFirebase・DeepSeekとの接続は未確認） |
-| 出題 → 検証 → 習得判定 | **APIが未実装。** 画面は、デモ版（モック）で動く |
+| ログインの本人確認、初回登録、教材選択、「教える」会話、学習レポート、知識マップ | **動く**（本番で、本物の Google ログインと DeepSeek を使って確認済み） |
+| 出題 → 検証 → 習得判定 | **動く**（本番で確認済み）。一次方程式（文字は x 1つ）だけ。受入試験 AT-04・05・12 も自動テスト化 |
 | 退会・データ削除、知識リセット、設定の画面 | **未実装** |
 | 知識マップの前提の矢印 | デモ版では出る。**本物のAPIでは、前提関係のモデルが未実装のため、出ない** |
-| 動作URL（配備） | **未配備** |
+| 動作URL（配備） | **配備済み**（https://tnd2026-oct-hackathon.web.app） |
 | 採点の比較実験（DeepSeekとJev） | 準備のみ（[データと採点ツール](docs/experiments/scoring/README.md)）。**採点は未実施。** Jevは未接続 |
 | レスポンシブ・アクセシビリティ | 確認済み（幅1280・390、キーボード、axe）。実機・スクリーンリーダーは未確認 |
 
