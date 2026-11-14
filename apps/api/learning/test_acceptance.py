@@ -230,3 +230,28 @@ class ExerciseMastery(TestCase):
             self.assertEqual(res.status_code, 400)
         self.assertFalse(MasteryEvidence.objects.exists())
         self.assertEqual(self.status_of(self.addsub), KnowledgeStatus.INTRODUCED)
+
+    def test_demo_script_flow(self):
+        """発表の台本（docs/submission/demo_script.md の 2 節）の流れが、そのとおりに動く"""
+        from lessons.models import Concept, Lesson
+
+        muldiv = Concept.objects.get(code="equality-multiply-divide")
+        lesson = Lesson.objects.get(title="等式の性質")
+        self.sid = self.c.post("/api/v1/sessions/", {"mode": "preset", "lesson_ids": [lesson.id]}, format="json").json()["id"]
+        self.teach()  # 3：説明 1
+        self.assertEqual(self.solve("x+3=7", self.addsub)["result"], "correct")  # 4：1 問で習得
+        self.assertEqual(self.status_of(self.addsub), KnowledgeStatus.MASTERED)
+        self.assertEqual(self.solve("x+5=9", self.addsub)["reason"], "duplicate_form")  # 5：同じ形
+        self.assertEqual(self.give("x^2=4", self.addsub)["verification_status"], "UNSUPPORTED")  # 6：範囲外
+        stopped = self.solve("2x+3=11", self.addsub)  # 7：わり算で止まる
+        self.assertEqual((stopped["result"], stopped["blocked_skill"]), ("blocked", "両辺を0以外の同じ数でわる"))
+        reply = self.teach()  # 8：説明 2（次の概念＝かける・わる）
+        self.assertEqual(reply["peer_response"]["concept_id"], muldiv.id)
+        self.assertEqual(self.status_of(muldiv), KnowledgeStatus.INTRODUCED)
+        self.assertEqual(self.solve("2x+3=11", muldiv)["result"], "correct")  # 9：今度は解ける
+        self.assertEqual(self.status_of(muldiv), KnowledgeStatus.PRACTICING)
+        self.solve("3x=12", muldiv)  # 10：違う形で習得
+        self.assertEqual(self.status_of(muldiv), KnowledgeStatus.MASTERED)
+        self.c.post(f"/api/v1/sessions/{self.sid}/finish/")  # 11：レポート
+        report = self.c.get(f"/api/v1/sessions/{self.sid}/evaluation/").json()
+        self.assertEqual({c["concept_id"] for c in report["knowledge_changes"]}, {self.addsub.id, muldiv.id})
