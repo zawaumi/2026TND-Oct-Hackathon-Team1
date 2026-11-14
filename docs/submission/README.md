@@ -7,7 +7,7 @@
 | 提出物 | 状態 | 場所・備考 |
 |---|---|---|
 | リポジトリ | 提出可 | https://github.com/zawaumi/2026TND-Oct-Hackathon-Team1 （`main`：7bda887）。起動の手順は、ルートの [README](../../README.md) |
-| 動作 URL | **なし（未配備）** | 配備の設定と手順書（[deploy.md](../deploy.md)）は、用意した。実際の配備は、未実施。代わりに、ローカルで動くデモ版（下記）で見せる |
+| 動作 URL | **https://tnd2026-oct-hackathon.web.app** | Google アカウントでログイン。本物の DeepSeek と、サーバーの習得判定で動く（11/13〜14 に本番で通しの確認済み）。配備の手順は [deploy.md](../deploy.md)。ログインなしのデモ版（下記）もある |
 | 実装状況と未達の記録 | 提出可 | [status_and_unmet.md](status_and_unmet.md) |
 | 発表資料の構成案 | 提出可（スライド本体は、チームの資料を参照） | [slides_outline.md](slides_outline.md) |
 | デモの台本・通し練習の手順 | 提出可 | [demo_script.md](demo_script.md) |
@@ -28,7 +28,7 @@ npm run dev        # Windows の PowerShell では npm.cmd run dev
 
 ブラウザで http://localhost:3000 を開く。再読み込みすると、モックの状態は初期状態に戻る。
 
-本物の API（Django）をつなぐ手順は、ルートの [README](../../README.md)。ただし、出題・検証・習得判定の API は未実装なので、「問題を出す」は、本物の API では動かない。
+本物の API（Django）をつなぐ手順は、ルートの [README](../../README.md)。本物の動きは、動作 URL で試せる。
 
 ## 重要な注意
 

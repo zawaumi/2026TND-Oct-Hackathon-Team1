@@ -4,10 +4,9 @@
 外部の AI（DeepSeek）だけをモックにして、AI がどう答えても DRF が状態を決める、ことを確かめる。
 画面（Web）側の確認は、docs/e2e_acceptance.md を参照。
 
-まだ実装がない試験（AT-04・05・12）は、番号を残したまま skip にしてある（結果の一覧に「未実施」と出る）。
+出題・検証・習得判定（AT-04・05・12）は、公開教材のデータを入れて、教える → 問題を出す → 習得 を API だけで通す。
 """
 
-import unittest
 import uuid
 from unittest import mock
 
@@ -144,18 +143,90 @@ class AT10_RestartRestoresKnowledgeOnly(AcceptanceBase):
         self.assertEqual(self.tables_containing(self.MARKER), [], "会話の本文が、サーバーのどこかのテーブルに残っている")
 
 
-class NotYetImplemented(TestCase):
-    """出題・検証・習得判定の API が、まだ main にないため、試験できないもの（番号を残して skip にしてある）。
-    実装されたら、skip を外して、中身を書く。"""
+class ExerciseMastery(TestCase):
+    """出題・検証・習得判定（AT-04・05・12）。公開教材のデータを入れ、教える → 問題を出す → 習得、を API だけで通す。
+    外部の AI（DeepSeek）だけをモックにする。"""
 
-    @unittest.skip("AT-04：出題・検証・習得判定の API（POST /sessions/{id}/exercises/、POST /exercises/{id}/attempt/）が、まだ main にない")
+    def setUp(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from lessons.models import Concept, Lesson
+
+        call_command("load_curated_lessons", "--publish", stdout=StringIO())
+        self.user = get_user_model().objects.create_user(firebase_uid="uid-accept-ex")
+        self.c = APIClient()
+        self.c.force_authenticate(self.user)
+        lesson = Lesson.objects.get(title="移項")
+        res = self.c.post("/api/v1/sessions/", {"mode": "preset", "lesson_ids": [lesson.id]}, format="json")
+        assert res.status_code == 201, res.content
+        self.sid = res.json()["id"]
+        self.peer = Peer.objects.get(owner=self.user)
+        self.addsub = Concept.objects.get(code="equality-add-subtract")
+        self.trans = Concept.objects.get(code="transposition")
+
+    def teach(self):
+        with mock.patch("learning.turns.get_client", return_value=MockDeepSeekClient()):
+            res = self.c.post(f"/api/v1/sessions/{self.sid}/messages/", {"request_id": rid(), "content": GOOD}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        return res.json()
+
+    def give(self, latex, concept):
+        ex = self.c.post(
+            f"/api/v1/sessions/{self.sid}/exercises/",
+            {"request_id": rid(), "kind": "math_equation", "question": latex, "latex": latex, "target_concept_id": concept.id},
+            format="json",
+        )
+        self.assertEqual(ex.status_code, 201, ex.content)
+        return ex.json()
+
+    def solve(self, latex, concept):
+        ex = self.give(latex, concept)
+        res = self.c.post(f"/api/v1/exercises/{ex['id']}/attempt/", {"request_id": rid()}, format="json")
+        self.assertEqual(res.status_code, 200, res.content)
+        return res.json()
+
+    def status_of(self, concept):
+        row = PeerKnowledge.objects.filter(peer=self.peer, concept=concept).first()
+        return row.status if row else KnowledgeStatus.UNKNOWN
+
     def test_AT04_two_verified_different_forms_master_a_standard_concept(self):
         """検証済みの異形式2問で、標準概念の技能を正しく使ったら、習得条件の達成で MASTERED になる"""
+        self.teach()  # 1つめの概念（等式の両辺に同じ数をたす・ひく）を説明する
+        self.assertEqual(self.solve("x+3=7", self.addsub)["result"], "correct")
+        self.assertEqual(self.status_of(self.addsub), KnowledgeStatus.MASTERED)  # 基礎は1問
+        self.teach()  # 次の概念（移項）を説明する
+        self.assertEqual(self.status_of(self.trans), KnowledgeStatus.INTRODUCED)
+        first = self.solve("x+8=13", self.trans)
+        self.assertEqual(self.status_of(self.trans), KnowledgeStatus.PRACTICING)
+        second = self.solve("x-3=9", self.trans)  # 違う形
+        self.assertEqual((first["result"], second["result"]), ("correct", "correct"))
+        self.assertEqual(self.status_of(self.trans), KnowledgeStatus.MASTERED)
+        self.assertIn({"concept_id": self.trans.id, "old_status": "PRACTICING", "new_status": "MASTERED"}, second["knowledge_changes"])
 
-    @unittest.skip("AT-05：同上。出題の API がない")
     def test_AT05_repeating_the_same_form_does_not_inflate_the_count(self):
         """同じ形の問題をくり返し解いても、習得の回数を水増ししない（reason: duplicate_form）"""
+        self.teach()
+        self.solve("x+3=7", self.addsub)
+        self.teach()
+        self.solve("x+8=13", self.trans)
+        for latex in ("x+5=9", "x+1=2", "x+10=20"):
+            res = self.solve(latex, self.trans)
+            self.assertEqual((res["result"], res["reason"], res["knowledge_changes"]), ("correct", "duplicate_form", []))
+        self.assertEqual(self.status_of(self.trans), KnowledgeStatus.PRACTICING)
+        self.assertEqual(PeerKnowledge.objects.get(peer=self.peer, concept=self.trans).verified_correct, 1)
 
-    @unittest.skip("AT-12：同上。出題の API がない")
     def test_AT12_unsupported_problem_is_not_counted_as_evidence(self):
         """数学的に未対応の問題は UNSUPPORTED を返し、習得の根拠に数えない"""
+        from exercises.models import MasteryEvidence
+
+        self.teach()
+        for latex in ("x^2=4", "y+1=2", "x=x+1"):
+            ex = self.give(latex, self.addsub)
+            self.assertEqual(ex["verification_status"], "UNSUPPORTED")
+            self.assertTrue(ex["reason"])
+            res = self.c.post(f"/api/v1/exercises/{ex['id']}/attempt/", {"request_id": rid()}, format="json")
+            self.assertEqual(res.status_code, 400)
+        self.assertFalse(MasteryEvidence.objects.exists())
+        self.assertEqual(self.status_of(self.addsub), KnowledgeStatus.INTRODUCED)
